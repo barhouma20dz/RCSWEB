@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ الفروع الرياضية ============
+model Branch {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  motto       String   @default("")
+  description String   @default("")
+  icon        String   @default("Trophy")
+  color       String   @default("#16a34a")
+  image       String   @default("")
+  visible     Boolean  @default(true) // إظهار أو إخفاء الفرع من الموقع كاملاً (أمر الإدارة)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account      BranchAccount?
+  news         News[]
+  players      Player[]
+  matches      Match[]
+  trainings    Training[]
+  enrollments  Enrollment[]
+  gallery      GalleryItem[]
+  achievements Achievement[]
+  standings    Standing[]
+  videos       VideoItem[]
+  members      BranchMember[]
+  documents    ClubDocument[]
+}
+
+// ============ حساب الإدارة المركزية ============
+model Admin {
+  id                 String    @id @default(cuid())
+  username           String    @unique
+  passwordHash       String
+  name               String    @default("مدير النادي")
+  /** كل الجلسات الصادرة قبل هذه اللحظة تُبطل (تُحدَّث عند تغيير كلمة المرور) */
+  tokenInvalidBefore DateTime?
+  createdAt          DateTime  @default(now())
+}
+
+// ============ سجل الأحداث الأمنية (تدقيق الحماية) ============
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  /** نوع الحدث: login_success / login_failed / login_locked / rate_limited / password_changed / password_reset / invalid_token */
+  type      String
+  /** اسم المستخدم المستهدف أو صاحب الحدث */
+  actor     String?
+  /** عنوان IP للعميل */
+  ip        String?
+  /** تفاصيل إضافية */
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
+// ============ إطارات وأعضاء الفروع ============
+model BranchMember {
+  id          String         @id @default(cuid())
+  firstName   String // الاسم
+  lastName    String // اللقب
+  birthDate   String         @default("") // تاريخ الميلاد
+  position    String         @default("عضو") // المنصب في الفرع
+  specialty   String         @default("") // التخصص
+  phone       String         @default("")
+  appointedAt String         @default("") // تاريخ التعيين
+  notes       String         @default("")
+  sortOrder   Int            @default(0)
+  branchId    String
+  branch      Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  documents   ClubDocument[]
+  createdAt   DateTime       @default(now())
+}
+
+// ============ كتب النادي: ملفات ومحاضر ومراسلات وتصاميم أوراق ============
+model ClubDocument {
+  id              String        @id @default(cuid())
+  refNumber       String        @default("") // رقم المرجع
+  title           String
+  type            String        @default("file") // file | minute | letter | request | design
+  category        String        @default("") // التصنيف (ملف إداري، محضر تنصيب، ...)
+  content         String        @default("") // نص الوثيقة
+  design          String        @default("") // JSON تصميم الورقة (ترويسة، ختم، توقيع، ألوان)
+  memberId        String? // الإطار المعني بالوثيقة
+  member          BranchMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  branchId        String? // الفرع المعني
+  branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  visibleToBranch Boolean       @default(false) // إظهار في حساب الفرع (أمر الإدارة)
+  createdBy       String        @default("الإدارة العامة")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// ============ إعدادات وتصميم الواجهة الرئيسية ============
+model SiteSetting {
+  key       String   @id
+  value     String // JSON
+  updatedAt DateTime @updatedAt
+}
+
+// ============ جداول الترتيب ============
+model Standing {
+  id           String @id @default(cuid())
+  teamName     String
+  played       Int    @default(0)
+  won          Int    @default(0)
+  drawn        Int    @default(0)
+  lost         Int    @default(0)
+  goalsFor     Int    @default(0)
+  goalsAgainst Int    @default(0)
+  points       Int    @default(0)
+  branchId     String
+  branch       Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+}
+
+// ============ الفيديوهات ============
+model VideoItem {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  thumb     String   @default("")
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+// ============ متجر النادي ============
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String      @default("")
+  price       Int
+  image       String      @default("")
+  category    String      @default("ملابس")
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  orders      ShopOrder[]
+}
+
+// ============ طلبات المتجر ============
+model ShopOrder {
+  id           String   @id @default(cuid())
+  customerName String
+  phone        String
+  size         String   @default("")
+  note         String   @default("")
+  status       String   @default("pending") // pending | done
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+// ============ حسابات مكاتب الفروع ============
+model BranchAccount {
+  id                 String    @id @default(cuid())
+  username           String    @unique
+  passwordHash       String
+  /** كل الجلسات الصادرة قبل هذه اللحظة تُبطل (تُحدَّث عند تغيير أو تصفير كلمة المرور) */
+  tokenInvalidBefore DateTime?
+  branchId           String    @unique
+  branch             Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+}
+
+// ============ الأخبار ============
+model News {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  image     String   @default("")
+  featured  Boolean  @default(false)
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ اللاعبون ============
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  position  String   @default("")
+  number    Int?
+  age       Int?
+  photo     String   @default("")
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// ============ المباريات ============
+model Match {
+  id          String   @id @default(cuid())
+  opponent    String
+  date        DateTime
+  venue       String   @default("home") // home | away
+  location    String   @default("")
+  competition String   @default("")
+  homeScore   Int?
+  awayScore   Int?
+  status      String   @default("upcoming") // upcoming | finished
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// ============ الجدول التدريبي ============
+model Training {
+  id        String @id @default(cuid())
+  day       String
+  time      String
+  location  String @default("")
+  coach     String @default("")
+  groupName String @default("")
+  branchId  String
+  branch    Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+}
+
+// ============ طلبات الانضمام (استمارة الانخراط النهاري) ============
+model Enrollment {
+  id               String   @id @default(cuid())
+  firstName        String   @default("") // الاسم الشخصي
+  lastName         String   @default("") // اللقب
+  fullName         String // الاسم الكامل (مخزّن للعرض السريع)
+  gender           String   @default("") // male | female
+  birthDate        String   @default("") // تاريخ الميلاد YYYY-MM-DD (تُعرض شهر/يوم/سنة)
+  age              Int
+  address          String   @default("") // العنوان (الشخصي للبالغ — عنوان ولي الأمر للقاصر)
+  phone            String // رقم الهاتف (الشخصي للبالغ — هاتف ولي الأمر للقاصر)
+  parentName       String   @default("") // الاسم الكامل لولي الأمر (للأقل من 18 سنة)
+  note             String   @default("")
+  status           String   @default("pending") // pending | accepted | rejected
+  branchId         String
+  branch           Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+}
+
+// ============ معرض الصور ============
+model GalleryItem {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String   @default("")
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+// ============ الإنجازات ============
+model Achievement {
+  id          String  @id @default(cuid())
+  title       String
+  year        String
+  description String  @default("")
+  branchId    String?
+  branch      Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+}
+
+// ============ رسائل التواصل ============
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @default("")
+  phone     String   @default("")
+  message   String
+  createdAt DateTime @default(now())
+}

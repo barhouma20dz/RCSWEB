@@ -1,0 +1,350 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(html.light, html.light *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-cairo), sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-silver: var(--silver);
+  --color-silver-soft: var(--silver-soft);
+  --color-club: var(--club);
+  --color-club-dark: var(--club-dark);
+  --color-club-light: var(--club-light);
+  --color-flag-red: var(--flag-red);
+  --color-flag-green: var(--flag-green);
+  /* لون النص فوق الأسطح الملوّنة بالثيم (أبيض ليلاً / كحلي نهاراً) */
+  --color-paper: var(--paper);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * ===== نظام الألوان =====
+ * الوضع الليلي هو الافتراضي (بدون أي صنف على <html>) — الهوية الكحلية للنادي
+ * الوضع النهاري يُفعّل عبر صنف light على <html>
+ * لوحتا المكتب/الإدارة نمطان ورقيان فاتحان دائماً — يُفرضان عبر صنف panel-light
+ */
+:root {
+  --radius: 0.75rem;
+  /* ===== رموز shadcn — قيم الوضع الليلي (الافتراضي) ===== */
+  --background: oklch(0.19 0.055 270);
+  --foreground: oklch(0.96 0.008 255);
+  --card: oklch(0.235 0.055 269);
+  --card-foreground: oklch(0.96 0.008 255);
+  --popover: oklch(0.225 0.058 269);
+  --popover-foreground: oklch(0.96 0.008 255);
+  /* في الليلي يصبح اللون المميز فضياً معدنياً ليتباين فوق الكحلي */
+  --primary: oklch(0.88 0.015 255);
+  --primary-foreground: oklch(0.2 0.06 270);
+  --secondary: oklch(1 0 0 / 0.1);
+  --secondary-foreground: oklch(0.96 0.008 255);
+  --muted: oklch(1 0 0 / 0.08);
+  --muted-foreground: oklch(0.74 0.025 258);
+  --accent: oklch(1 0 0 / 0.12);
+  --accent-foreground: oklch(0.96 0.008 255);
+  --destructive: oklch(0.62 0.21 25);
+  --border: oklch(1 0 0 / 0.14);
+  --input: oklch(1 0 0 / 0.16);
+  --ring: oklch(0.75 0.03 258);
+  --chart-1: oklch(0.34 0.078 268);
+  --chart-2: oklch(0.6 0.2 25);
+  --chart-3: oklch(0.55 0.14 155);
+  --chart-4: oklch(0.75 0.02 255);
+  --chart-5: oklch(0.45 0.09 268);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  /* ===== ألوان النادي الرسمية (من الشعار) ===== */
+  /* الفضي المعدني (نجوم وإطار الشعار) — للأقسام الداكنة */
+  --silver: oklch(0.88 0.015 255);
+  --silver-soft: oklch(0.955 0.008 252);
+  /* الكحلي (درع الشعار) */
+  --club: oklch(0.36 0.08 268);
+  --club-dark: oklch(0.19 0.055 270);
+  --club-light: oklch(0.955 0.012 256);
+  /* الأخضر والأحمر الجزائريان من الشعار */
+  --flag-red: oklch(0.55 0.22 25);
+  --flag-green: oklch(0.5 0.14 155);
+  /* النص فوق الأسطح الملوّنة بالثيم: أبيض ليلاً / كحلي نهاراً */
+  --paper: oklch(0.985 0.003 260);
+  /* ===== متغيرات دلالية للواجهة العامة (تنقلب مع الثيم) ===== */
+  --surface: oklch(1 0 0 / 0.055);
+  --ink: oklch(0.97 0.006 255);
+  --chip: oklch(1 0 0 / 0.09);
+}
+
+/* ===== الوضع النهاري (html.light) + اللوحات الإدارية (panel-light) =====
+   يعكس رموز shadcn إلى القيم الفاتحة الورقية */
+html.light,
+html.panel-light {
+  --background: oklch(0.99 0.003 260);
+  --foreground: oklch(0.24 0.045 268);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.045 268);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.045 268);
+  /* الكحلي الرسمي من شعار النادي */
+  --primary: oklch(0.34 0.078 268);
+  --primary-foreground: oklch(0.985 0.003 260);
+  --secondary: oklch(0.95 0.01 260);
+  --secondary-foreground: oklch(0.32 0.06 268);
+  --muted: oklch(0.955 0.006 258);
+  --muted-foreground: oklch(0.5 0.025 262);
+  --accent: oklch(0.955 0.014 258);
+  --accent-foreground: oklch(0.32 0.06 268);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.915 0.01 258);
+  --input: oklch(0.915 0.01 258);
+  --ring: oklch(0.6 0.06 262);
+  /* متغيرات دلالية فاتحة */
+  --surface: oklch(1 0 0);
+  --ink: oklch(0.19 0.055 270);
+  --chip: oklch(0.955 0.012 256);
+}
+
+/* الوضع النهاري: النص فوق الأسطح الملوّنة يصبح كحلياً */
+html.light {
+  --paper: oklch(0.3 0.06 268);
+}
+
+html.light body {
+  background: oklch(0.975 0.008 255);
+  color: oklch(0.28 0.05 268);
+}
+
+html.light .club-gradient {
+  background: linear-gradient(135deg, oklch(0.965 0.012 255) 0%, oklch(0.925 0.02 258) 55%, oklch(0.955 0.01 255) 100%);
+}
+
+html.light .dark-hero-overlay {
+  background:
+    linear-gradient(to top, oklch(0.955 0.01 256 / 0.97) 0%, oklch(0.965 0.008 256 / 0.86) 45%, oklch(0.965 0.008 256 / 0.68) 100%);
+}
+
+html.light .glass {
+  backdrop-filter: blur(14px);
+  background: oklch(0.985 0.005 256 / 0.85);
+}
+
+html.light .subtle-pattern {
+  background-image:
+    radial-gradient(oklch(0.35 0.06 268 / 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+html.light .card-hover:hover {
+  box-shadow: 0 22px 45px -18px oklch(0.35 0.06 268 / 0.22);
+}
+
+/* النص المميز المعدني: يُعمّق في النهاري ليحافظ على التباين */
+html.light .silver-text {
+  background-image: linear-gradient(
+    120deg,
+    var(--accent-deep2, #93a1ba) 0%,
+    oklch(0.38 0.08 268) 38%,
+    var(--accent-deep, #aeb9cd) 66%,
+    oklch(0.38 0.08 268) 100%
+  );
+}
+
+html.light .nice-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0.04 262 / 0.45);
+}
+html.light .nice-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.4 0.06 265);
+}
+
+html.light .logo-glow {
+  filter: drop-shadow(0 0 22px oklch(0.4 0.07 268 / 0.28));
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-cairo), 'Segoe UI', sans-serif;
+  }
+}
+
+/* ===== أدوات مساعدة خاصة بالنادي ===== */
+/* لون مميز معدني متلألئ — للنصوص فوق الخلفيات الداكنة (قابل للتغيير من إعدادات الإدارة) */
+.silver-text {
+  background-image: linear-gradient(
+    120deg,
+    var(--accent-light, #f4f7fc) 0%,
+    var(--accent-deep, #aeb9cd) 40%,
+    var(--accent-light, #f4f7fc) 68%,
+    var(--accent-deep2, #93a1ba) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* التدرج الكحلي الرسمي (درع الشعار) */
+.club-gradient {
+  background: linear-gradient(135deg, oklch(0.22 0.06 270) 0%, oklch(0.32 0.085 268) 50%, oklch(0.16 0.05 272) 100%);
+}
+
+.dark-hero-overlay {
+  background:
+    linear-gradient(to top, oklch(0.14 0.045 270 / 0.97) 0%, oklch(0.17 0.055 269 / 0.82) 45%, oklch(0.17 0.055 269 / 0.62) 100%);
+}
+
+.glass {
+  backdrop-filter: blur(14px);
+  background: oklch(0.2 0.06 270 / 0.72);
+}
+
+.card-hover {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 45px -18px oklch(0.3 0.07 268 / 0.35);
+}
+
+/* شريط تمرير مخصص */
+.nice-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.75 0.03 258 / 0.55);
+  border-radius: 8px;
+}
+.nice-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.05 262);
+}
+
+/* نمط نقاط خفيف للخلفيات */
+.subtle-pattern {
+  background-image:
+    radial-gradient(oklch(0.7 0.06 262 / 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* هالة الشعار الفضية */
+.logo-glow {
+  filter: drop-shadow(0 0 24px oklch(0.9 0.02 255 / 0.4));
+}
+
+/* مؤثر الدخول للعناوين */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 oklch(0.88 0.015 255 / 0.35); }
+  70% { box-shadow: 0 0 0 18px oklch(0.88 0.015 255 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.88 0.015 255 / 0); }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2.5s infinite;
+}
+
+/* ===== ورقة الوثائق الرسمية (مصمم الكتب والمراسلات) ===== */
+.doc-paper {
+  background: #fdfcf8;
+  color: #1c2434;
+  border-radius: 4px;
+  box-shadow: 0 18px 50px -12px oklch(0.2 0.05 270 / 0.45);
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-cairo), 'Segoe UI', sans-serif;
+}
+.doc-paper-frame {
+  position: absolute;
+  inset: 10px;
+  border: 1.5px solid var(--doc-accent, #1d2f5e);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.doc-paper-frame::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 0.5px solid var(--doc-accent, #1d2f5e);
+  border-radius: 2px;
+}
+.doc-stamp {
+  border: 2.5px solid var(--doc-accent, #1d2f5e);
+  color: var(--doc-accent, #1d2f5e);
+  border-radius: 9999px;
+  transform: rotate(-12deg);
+  opacity: 0.82;
+}
+
+/* الطباعة: أطبع ورقة الوثيقة فقط */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .doc-print-area,
+  .doc-print-area * {
+    visibility: visible !important;
+  }
+  .doc-print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0;
+    width: 100% !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .doc-print-hide {
+    display: none !important;
+  }
+}
