@@ -87,9 +87,9 @@ interface TrackRequest {
 function StatusBadge({ status }: { status: string }) {
   const t = useT()
   const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: t('track.statusPending'), cls: 'bg-yellow-400/15 text-yellow-700 dark:text-yellow-300 border border-yellow-400/40' },
-    accepted: { label: t('track.statusAccepted'), cls: 'bg-green-500/15 text-green-700 dark:text-green-300 border border-green-400/40' },
-    rejected: { label: t('track.statusRejected'), cls: 'bg-red-500/15 text-red-700 dark:text-red-300 border border-red-400/40' },
+    pending: { label: t('track.statusPending'), cls: 'bg-yellow-400/15 text-yellow-300 light:text-yellow-700 border border-yellow-400/40' },
+    accepted: { label: t('track.statusAccepted'), cls: 'bg-green-500/15 text-green-300 light:text-green-700 border border-green-400/40' },
+    rejected: { label: t('track.statusRejected'), cls: 'bg-red-500/15 text-red-300 light:text-red-700 border border-red-400/40' },
   }
   const s = map[status] ?? { label: status, cls: 'bg-paper/10 text-paper/80 border border-paper/25' }
   return (
@@ -150,7 +150,7 @@ function TrackCard() {
             onChange={(e) => setLastName(e.target.value)}
             placeholder={t('track.lastName')}
             aria-label={t('track.lastName')}
-            className="bg-white/95 text-(--club-dark) placeholder:text-muted-foreground border-paper/20 text-right"
+            className="bg-white/95 text-(--club-dark) placeholder:text-(--club)/60 border-(--club)/20 text-right"
           />
         </div>
         <div className="flex gap-2">
@@ -161,7 +161,7 @@ function TrackCard() {
             dir="ltr"
             inputMode="tel"
             aria-label={t('track.title')}
-            className="bg-white/95 text-(--club-dark) placeholder:text-muted-foreground border-paper/20 text-right"
+            className="bg-white/95 text-(--club-dark) placeholder:text-(--club)/60 border-(--club)/20 text-right"
           />
           <Button
             type="submit"
@@ -175,7 +175,7 @@ function TrackCard() {
       </form>
 
       {error && (
-        <p className="mt-3 text-xs font-bold text-red-700 dark:text-red-300 bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2">
+        <p className="mt-3 text-xs font-bold text-red-300 light:text-red-700 bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2">
           {error}
         </p>
       )}
@@ -385,7 +385,7 @@ export function JoinSection({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="rounded-3xl bg-white p-6 md:p-8 shadow-2xl shadow-black/30 light:shadow-black/10"
+            className="paper-card rounded-3xl bg-white p-6 md:p-8 shadow-2xl shadow-black/30 light:shadow-black/10"
           >
             {done ? (
               <div className="text-center py-10">

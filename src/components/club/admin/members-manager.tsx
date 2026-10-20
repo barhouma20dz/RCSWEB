@@ -248,7 +248,7 @@ export function MembersManager({ data, reload }: { data: AdminData; reload: () =
           لا يوجد إطارات مطابقون للبحث
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 max-h-[620px] overflow-y-auto nice-scroll p-0.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
           {filtered.map((m) => (
             <div
               key={m.id}
@@ -443,7 +443,7 @@ export function MembersManager({ data, reload }: { data: AdminData; reload: () =
                     لا توجد وثائق مرتبطة بهذا الإطار بعد — سجّل وثيقة من كتب النادي واربطها به.
                   </p>
                 ) : (
-                  <ul className="space-y-2 max-h-52 overflow-y-auto nice-scroll">
+                  <ul className="space-y-2">
                     {memberDocs.map((d) => (
                       <li key={d.id} className="rounded-xl border border-(--border) p-3 flex items-center gap-2.5">
                         <FileText className="h-4 w-4 text-(--club) shrink-0" />

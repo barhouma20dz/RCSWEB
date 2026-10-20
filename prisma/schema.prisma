@@ -82,7 +82,21 @@ model BranchMember {
   createdAt   DateTime       @default(now())
 }
 
-// ============ كتب النادي: ملفات ومحاضر ومراسلات وتصاميم أوراق ============
+// ============ مكتب النادي: قوالب النماذج والمراجع الإدارية ============
+model DocumentTemplate {
+  id        String   @id @default(cuid())
+  name      String // اسم النموذج
+  kind      String   @default("template") // template (نموذج قابل للإصدار) | reference (مرجع للقراءة)
+  category  String   @default("") // التصنيف: كتاب إداري، محضر، شهادة، ترخيص، مراسلة...
+  fileType  String   @default("image") // image | pdf
+  fileData  String   @default("") // ملف النموذج (data URL base64)
+  fields    String   @default("[]") // JSON حقول النص القابلة للتعبئة [{key,label,x,y,w,size,bold}]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ مكتب النادي: ملفات ومحاضر ومراسلات ووثائق مُصدرة ============
 model ClubDocument {
   id              String        @id @default(cuid())
   refNumber       String        @default("") // رقم المرجع
@@ -96,6 +110,8 @@ model ClubDocument {
   branchId        String? // الفرع المعني
   branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
   visibleToBranch Boolean       @default(false) // إظهار في حساب الفرع (أمر الإدارة)
+  templateId      String? // القالب المستخدم في الإصدار (من مكتب النادي)
+  issuedValues    String        @default("") // JSON القيم المُعبأة عند الإصدار من قالب
   createdBy       String        @default("الإدارة العامة")
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

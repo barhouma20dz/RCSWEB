@@ -3,19 +3,31 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { getSessionAdmin, unauthorized } from '@/lib/auth'
 
-const documentSchema = z.object({
-  refNumber: z.string().max(60).optional().default(''),
-  title: z.string().min(3, 'عنوان الوثيقة مطلوب (3 أحرف على الأقل)'),
-  type: z.enum(['file', 'minute', 'letter', 'request', 'design'], {
-    message: 'نوع الوثيقة غير صالح',
-  }),
-  category: z.string().max(80).optional().default(''),
-  content: z.string().min(5, 'نص الوثيقة مطلوب'),
-  design: z.string().optional().default(''),
-  memberId: z.string().optional().nullable(),
-  branchId: z.string().optional().nullable(),
-  visibleToBranch: z.boolean().optional().default(false),
-})
+const documentSchema = z
+  .object({
+    refNumber: z.string().max(60).optional().default(''),
+    title: z.string().min(3, 'عنوان الوثيقة مطلوب (3 أحرف على الأقل)'),
+    type: z.enum(['file', 'minute', 'letter', 'request', 'design', 'issued'], {
+      message: 'نوع الوثيقة غير صالح',
+    }),
+    category: z.string().max(80).optional().default(''),
+    content: z.string().optional().default(''),
+    design: z.string().optional().default(''),
+    memberId: z.string().optional().nullable(),
+    branchId: z.string().optional().nullable(),
+    visibleToBranch: z.boolean().optional().default(false),
+    templateId: z.string().nullable().optional(),
+    issuedValues: z.string().optional().default(''),
+  })
+  .superRefine((d, ctx) => {
+    // الوثائق المُصدرة من قالب: النص مجرد ملخص اختياري للقيم
+    if (d.type !== 'issued' && d.content.trim().length < 5) {
+      ctx.addIssue({ code: 'custom', message: 'نص الوثيقة مطلوب', path: ['content'] })
+    }
+    if (d.type === 'issued' && !d.templateId) {
+      ctx.addIssue({ code: 'custom', message: 'الوثيقة المُصدرة يجب أن تكون مرتبطة بنموذج من مكتب النادي', path: ['templateId'] })
+    }
+  })
 
 const idSchema = z.object({ id: z.string().min(1, 'المعرف مطلوب') })
 
@@ -73,6 +85,11 @@ export async function POST(req: NextRequest) {
       const member = await db.branchMember.findUnique({ where: { id: parsed.data.memberId } })
       if (!member) return NextResponse.json({ error: 'الإطار المحدد غير موجود' }, { status: 400 })
     }
+    // الوثيقة المُصدرة يجب أن تشير إلى نموذج قائم من مكتب النادي
+    if (parsed.data.templateId) {
+      const template = await db.documentTemplate.findUnique({ where: { id: parsed.data.templateId } })
+      if (!template) return NextResponse.json({ error: 'النموذج المحدد غير موجود في مكتب النادي' }, { status: 400 })
+    }
 
     const payload = {
       refNumber: parsed.data.refNumber,
@@ -84,6 +101,8 @@ export async function POST(req: NextRequest) {
       branchId: parsed.data.branchId || null,
       memberId: parsed.data.memberId || null,
       visibleToBranch: parsed.data.visibleToBranch,
+      templateId: parsed.data.templateId || null,
+      issuedValues: parsed.data.issuedValues,
     }
 
     if (action === 'create') {

@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
     const admin = await getSessionAdmin(req)
     if (!admin) return unauthorized()
 
-    const [branchesCount, newsCount, playersCount, matchesCount, pendingEnrollments, messagesCount, pendingOrders, membersCount, documentsCount, branches, news, enrollments, messages, orders, products, members, documents, siteSetting] =
+    // ملاحظة: ترتيب التفكيك يجب أن يطابق ترتيب الاستعلامات في Promise.all تماماً
+    const [branchesCount, newsCount, playersCount, matchesCount, pendingEnrollments, messagesCount, pendingOrders, membersCount, documentsCount, templatesCount, branches, news, enrollments, messages, orders, products, members, documents, siteSetting, achievements, templates] =
       await Promise.all([
         db.branch.count(),
         db.news.count(),
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
         db.shopOrder.count({ where: { status: 'pending' } }),
         db.branchMember.count(),
         db.clubDocument.count(),
+        db.documentTemplate.count(),
         db.branch.findMany({
           orderBy: { sortOrder: 'asc' },
           include: {
@@ -53,6 +55,15 @@ export async function GET(req: NextRequest) {
           },
         }),
         db.siteSetting.findUnique({ where: { key: 'site' } }),
+        db.achievement.findMany({
+          orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+          include: { branch: { select: { name: true, slug: true, color: true } } },
+        }),
+        db.documentTemplate.findMany({
+          orderBy: { createdAt: 'desc' },
+          // fileData ثقيل — لا يُرسل في قائمة العرض، يُجلب عند الطلب الفعلي
+          select: { id: true, name: true, kind: true, category: true, fileType: true, fields: true, active: true, createdAt: true, updatedAt: true },
+        }),
       ])
 
     let settings: unknown = null
@@ -75,6 +86,7 @@ export async function GET(req: NextRequest) {
         pendingOrders,
         membersCount,
         documentsCount,
+        templatesCount,
       },
       branches: branches.map((b) => ({
         id: b.id,
@@ -118,6 +130,8 @@ export async function GET(req: NextRequest) {
       products,
       members,
       documents,
+      achievements,
+      templates,
       settings,
     })
   } catch (e) {

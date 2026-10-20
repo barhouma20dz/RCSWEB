@@ -44,6 +44,7 @@ export const DOC_TYPE_LABELS: Record<ClubDocumentItem['type'], string> = {
   letter: 'مراسلة',
   request: 'طلب',
   design: 'ورقة رسمية',
+  issued: 'وثيقة مُصدرة',
 }
 
 const ACCENT_HEX: Record<DocumentDesign['accent'], string> = {

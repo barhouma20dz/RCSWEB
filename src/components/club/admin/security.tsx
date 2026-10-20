@@ -23,6 +23,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  UserRoundCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -72,7 +73,7 @@ function passwordStrength(pw: string): { label: string; cls: string; width: stri
   return { label: 'قوية جداً', cls: 'bg-emerald-600', width: '100%' }
 }
 
-export function SecurityManager() {
+export function SecurityManager({ username }: { username?: string }) {
   const { toast } = useToast()
   const [data, setData] = useState<SecurityPayload | null>(null)
   const [loading, setLoading] = useState(true)
@@ -80,6 +81,11 @@ export function SecurityManager() {
   const [showNew, setShowNew] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ current: '', next: '', confirm: '' })
+
+  // تغيير اسم المستخدم
+  const [uSaving, setUSaving] = useState(false)
+  const [uForm, setUForm] = useState({ next: '', current: '' })
+  const [uError, setUError] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +106,35 @@ export function SecurityManager() {
   useEffect(() => {
     void load()
   }, [load])
+
+  /** تغيير اسم مستخدم الإدارة — يتطلب كلمة المرور الحالية للتأكيد */
+  const changeUsername = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setUError('')
+    if (!uForm.next.trim() || !uForm.current) return
+    setUSaving(true)
+    try {
+      const res = await apiFetch('/api/admin/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: uForm.next.trim(), currentPassword: uForm.current }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'فشل تغيير اسم المستخدم')
+      toast({
+        title: 'تم التغيير — سيُطلب منك الدخول باسم المستخدم الجديد',
+        description: 'كل الجلسات القديمة أُبطلت، وستُسأل عن اسم المستخدم الجديد عند الدخول القادم',
+      })
+      setUForm({ next: '', current: '' })
+      // ملاحظة: لا نعيد تحميل السجل هنا — الجلسة أُبطلت عمداً بعد تغيير الاسم وسيُطلب الدخول مجدداً
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل تغيير اسم المستخدم'
+      setUError(msg)
+      toast({ title: msg, variant: 'destructive' })
+    } finally {
+      setUSaving(false)
+    }
+  }
 
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -247,6 +282,68 @@ export function SecurityManager() {
 
         {/* ملخص الحماية والإحصائيات */}
         <section className="space-y-4">
+          {/* تغيير اسم المستخدم — بجانب بطاقة كلمة المرور */}
+          <div className="rounded-2xl bg-white border border-(--border) p-5">
+            <h3 className="font-black text-(--club-dark) flex items-center gap-2 mb-1">
+              <UserRoundCog className="h-5 w-5 text-primary" />
+              تغيير اسم المستخدم
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              اسم الدخول إلى لوحة الإدارة — يتطلب تأكيد كلمة المرور الحالية
+            </p>
+
+            <div className="rounded-xl bg-(--club-light) border border-(--border) px-3 py-2 mb-3 text-sm">
+              <span className="font-bold text-(--club-dark)">اسم المستخدم الحالي: </span>
+              <strong dir="ltr" className="text-(--club)">
+                {username || '—'}
+              </strong>
+            </div>
+
+            <form onSubmit={changeUsername} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sec-username">اسم المستخدم الجديد</Label>
+                <Input
+                  id="sec-username"
+                  value={uForm.next}
+                  onChange={(e) => setUForm({ ...uForm, next: e.target.value })}
+                  dir="ltr"
+                  className="text-right"
+                  placeholder={username || 'admin'}
+                  autoComplete="username"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  3 أحرف على الأقل — أحرف إنجليزية صغيرة وأرقام وشرطات سفلية فقط
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sec-username-password">كلمة المرور الحالية (للتأكيد)</Label>
+                <Input
+                  id="sec-username-password"
+                  type="password"
+                  value={uForm.current}
+                  onChange={(e) => setUForm({ ...uForm, current: e.target.value })}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+
+              {uError && (
+                <p className="rounded-xl border border-red-500/40 bg-red-500/8 px-3 py-2 text-xs font-bold text-red-700 dark:text-red-300" role="alert">
+                  {uError}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={uSaving || !uForm.next.trim() || !uForm.current}
+                className="w-full"
+              >
+                {uSaving ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <UserRoundCog className="h-4 w-4 ml-1" />}
+                {uSaving ? 'جارٍ التغيير...' : 'تحديث اسم المستخدم'}
+              </Button>
+            </form>
+          </div>
+
           <div className="rounded-2xl bg-white border border-(--border) p-5">
             <h3 className="font-black text-(--club-dark) flex items-center gap-2 mb-3">
               <Lock className="h-5 w-5 text-primary" />
@@ -307,7 +404,7 @@ export function SecurityManager() {
             لا أحداث مسجلة بعد — ستظهر هنا كل عمليات الدخول والمحاولات الفاشلة وتغييرات كلمات المرور
           </p>
         ) : (
-          <div className="max-h-96 overflow-y-auto nice-scroll space-y-2" role="log" aria-label="سجل الأحداث الأمنية">
+          <div className="space-y-2" role="log" aria-label="سجل الأحداث الأمنية">
             {data.events.map((ev) => {
               const meta = EVENT_META[ev.type] ?? { label: ev.type, cls: 'bg-muted text-muted-foreground border-border', icon: ScrollText }
               const Icon = meta.icon

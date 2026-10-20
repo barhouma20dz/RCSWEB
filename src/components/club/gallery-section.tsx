@@ -28,13 +28,13 @@ export function GallerySection({ items, videos = [] }: { items: GalleryImage[]; 
           <TabsList className="mx-auto flex w-fit bg-(--chip) p-1.5 rounded-2xl shadow-sm mb-8">
             <TabsTrigger
               value="images"
-              className="rounded-xl px-6 data-[state=active]:bg-(--paper) data-[state=active]:text-(--ink) font-bold"
+              className="rounded-xl px-6 data-[state=active]:bg-white data-[state=active]:text-(--club-dark) font-bold"
             >
               {t('gallery.images')}
             </TabsTrigger>
             <TabsTrigger
               value="videos"
-              className="rounded-xl px-6 data-[state=active]:bg-(--paper) data-[state=active]:text-(--ink) font-bold"
+              className="rounded-xl px-6 data-[state=active]:bg-white data-[state=active]:text-(--club-dark) font-bold"
             >
               {t('gallery.videos')}
             </TabsTrigger>

@@ -472,6 +472,7 @@ const DOC_ICONS: Record<ClubDocumentItem['type'], React.ComponentType<{ classNam
   letter: Mail,
   request: Inbox,
   design: Palette,
+  issued: Stamp,
 }
 
 export function BranchDocumentsManager({ data }: { data: OfficeData }) {

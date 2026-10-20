@@ -167,7 +167,7 @@ export interface BranchMemberItem {
   createdAt: string
 }
 
-export type ClubDocumentType = 'file' | 'minute' | 'letter' | 'request' | 'design'
+export type ClubDocumentType = 'file' | 'minute' | 'letter' | 'request' | 'design' | 'issued'
 
 export interface ClubDocumentItem {
   id: string
@@ -182,9 +182,44 @@ export interface ClubDocumentItem {
   branchId: string | null
   branch: BranchRef | null
   visibleToBranch: boolean
+  templateId?: string | null
+  issuedValues?: string
   createdBy: string
   createdAt: string
   updatedAt: string
+}
+
+/** قالب من مكتب النادي — نموذج قابل للإصدار أو مرجع للقراءة */
+export interface DocumentTemplateItem {
+  id: string
+  name: string
+  kind: 'template' | 'reference' | string
+  category: string
+  fileType: 'image' | 'pdf' | string
+  fields: TemplateField[]
+  active: boolean
+  createdAt: string
+  updatedAt: string
+  fileData?: string // يُجلب فقط عند الطلب (المعاينة/الإصدار)
+}
+
+/** حقل نصي قابل للتعبئة فوق قالب — الإحداثيات نسب مئوية من صفحة A4 */
+export interface TemplateField {
+  key: string
+  label: string
+  x: number // 0-100 %
+  y: number // 0-100 %
+  w: number // عرض الصندوق %
+  size: number // حجم الخط pt
+  bold: boolean
+}
+
+/** إحصائيات الصفحة الرئيسية — القابلة للتعديل من الإدارة */
+export interface EditableStats {
+  foundationYear?: number // سنة التأسيس
+  fansCount?: number // عدد المشجعين
+  medalsCount?: number // الميداليات
+  titlesCount?: number // الألقاب (إن تُرك فارغاً حُسبت من الإنجازات المسجلة)
 }
 
 /** نصوص ترويسة قسم من أقسام الصفحة الرئيسية (بثلاث لغات) */
@@ -252,6 +287,16 @@ export interface SiteSettings {
   }
   /** عناوين أقسام الصفحة الرئيسية حسب الذوق (تتجاوز النصوص الافتراضية) */
   texts?: Partial<Record<string, SectionTexts>>
+  /** إحصائيات الصفحة الرئيسية القابلة للتعديل (عدد اللاعبين والفروع يُحسبان تلقائياً من الفروع) */
+  stats?: EditableStats
+  /** محتوى تحريري: كلمة رئيس النادي وغيرها */
+  content?: {
+    presidentWord?: {
+      text?: Partial<Record<'ar' | 'fr' | 'en', string>>
+      name?: string
+      role?: string
+    }
+  }
   languages?: { ar?: boolean; fr?: boolean; en?: boolean }
 }
 
@@ -369,5 +414,7 @@ export interface AdminData {
   products: ProductItem[]
   members: BranchMemberItem[]
   documents: ClubDocumentItem[]
+  achievements: AchievementItem[]
+  templates: DocumentTemplateItem[]
   settings: SiteSettings | null
 }

@@ -65,9 +65,12 @@ export async function GET() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 6)
 
-    const titlesCount = achievements.filter((a) =>
-      /بطل|كأس|لقب|ذهبية|ميداليات|دوري|تأسيس/.test(a.title)
-    ).length + 12
+    // الإحصائيات: اللاعبون والفروع تُحسب تلقائياً من قاعدة البيانات،
+    // والبقية من إعدادات الإدارة (تبويب محتوى الموقع) مع قيم احتياطية
+    const s = (settings ?? {}) as {
+      stats?: { foundationYear?: number; fansCount?: number; medalsCount?: number; titlesCount?: number }
+    }
+    const achievementsBasedTitles = achievements.length
 
     return NextResponse.json({
       branches,
@@ -82,10 +85,10 @@ export async function GET() {
       stats: {
         branchesCount,
         playersCount,
-        titlesCount,
-        foundationYear: 2024,
-        fansCount: 12500,
-        medalsCount: 48,
+        titlesCount: s.stats?.titlesCount ?? achievementsBasedTitles,
+        foundationYear: s.stats?.foundationYear ?? 2024,
+        fansCount: s.stats?.fansCount ?? 12500,
+        medalsCount: s.stats?.medalsCount ?? 48,
       },
     })
   } catch (e) {

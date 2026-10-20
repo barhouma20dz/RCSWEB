@@ -20,6 +20,53 @@ const schema = z.object({
   password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل').max(100),
 })
 
+/** تغيير اسم المستخدم وحده — دون المساس بكلمة المرور */
+const patchSchema = z.object({
+  branchId: z.string().min(1, 'يرجى تحديد الفرع'),
+  username: usernameSchema,
+})
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const admin = await getSessionAdmin(req)
+    if (!admin) return unauthorized()
+
+    const body = await req.json().catch(() => null)
+    const parsed = patchSchema.safeParse(body)
+    if (!parsed.success) return badRequest(parsed.error.issues[0]?.message || 'بيانات غير صالحة')
+
+    const { branchId, username } = parsed.data
+
+    const account = await db.branchAccount.findUnique({ where: { branchId } })
+    if (!account) return NextResponse.json({ error: 'لا يوجد حساب لهذا الفرع' }, { status: 404 })
+
+    if (username === account.username) return badRequest('اسم المستخدم الجديد مطابق للحالي')
+
+    const clash = await db.branchAccount.findFirst({
+      where: { username, NOT: { branchId } },
+    })
+    if (clash) return badRequest('اسم المستخدم مستخدم بالفعل لحساب فرع آخر')
+
+    const adminClash = await db.admin.findUnique({ where: { username } })
+    if (adminClash) return badRequest('اسم المستخدم محجوز لحساب الإدارة')
+
+    const updated = await db.branchAccount.update({
+      where: { branchId },
+      data: { username, tokenInvalidBefore: new Date() },
+    })
+
+    await logSecurityEvent('username_changed', username, clientIp(req), `تغيير اسم مستخدم مكتب فرع من ${account.username} إلى ${username}`)
+
+    return NextResponse.json({
+      success: true,
+      account: { username: updated.username, branchId: updated.branchId },
+    })
+  } catch (e) {
+    console.error('admin accounts patch error', e)
+    return NextResponse.json({ error: 'حدث خطأ أثناء تغيير اسم المستخدم' }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const admin = await getSessionAdmin(req)

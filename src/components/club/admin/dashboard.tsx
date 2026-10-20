@@ -15,9 +15,10 @@ import {
   ArrowRight,
   Loader2,
   ShieldCheck,
-  BookOpen,
+  Library,
   Palette,
   Shield,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +34,7 @@ import {
 import { RecordsManager } from './records'
 import { MembersManager } from './members-manager'
 import { SiteSettingsManager } from './site-settings'
+import { SiteContentManager } from './site-content'
 import { SecurityManager } from './security'
 import type { AdminAccount, AdminData } from '../types'
 
@@ -46,18 +48,20 @@ type TabKey =
   | 'records'
   | 'members'
   | 'siteSettings'
+  | 'siteContent'
   | 'security'
 
 const tabs: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'overview', label: 'نظرة عامة', icon: LayoutDashboard },
   { key: 'branches', label: 'الفروع', icon: Building2 },
-  { key: 'records', label: 'كتب النادي', icon: BookOpen },
+  { key: 'records', label: 'مكتب النادي', icon: Library },
   { key: 'members', label: 'إطارات الفروع', icon: Users },
   { key: 'enrollments', label: 'طلبات الانضمام', icon: Inbox },
   { key: 'news', label: 'الأخبار', icon: Newspaper },
   { key: 'messages', label: 'الرسائل', icon: Mail },
   { key: 'shop', label: 'المتجر', icon: ShoppingBag },
   { key: 'siteSettings', label: 'إعدادات الموقع', icon: Palette },
+  { key: 'siteContent', label: 'محتوى الموقع', icon: FileText },
   { key: 'security', label: 'الأمان والحسابات', icon: Shield },
 ]
 
@@ -136,7 +140,7 @@ export function AdminDashboard({
   const statCards = [
     { label: 'فرع رياضي', value: data.stats.branchesCount, icon: Building2 },
     { label: 'إطار معيّن', value: data.stats.membersCount, icon: Users },
-    { label: 'وثيقة في كتب النادي', value: data.stats.documentsCount, icon: BookOpen },
+    { label: 'وثيقة في مكتب النادي', value: data.stats.documentsCount, icon: Library },
     { label: 'لاعب مسجل', value: data.stats.playersCount, icon: Users },
     { label: 'طلب انضمام معلق', value: data.stats.pendingEnrollments, icon: Inbox, alert: data.stats.pendingEnrollments > 0 },
     { label: 'رسالة تواصل', value: data.stats.messagesCount, icon: Mail },
@@ -250,11 +254,12 @@ export function AdminDashboard({
           {tab === 'records' && <RecordsManager data={data} reload={reload} />}
           {tab === 'members' && <MembersManager data={data} reload={reload} />}
           {tab === 'siteSettings' && <SiteSettingsManager data={data} reload={reload} />}
+          {tab === 'siteContent' && <SiteContentManager data={data} reload={reload} />}
           {tab === 'enrollments' && <EnrollmentsManager data={data} reload={reload} />}
           {tab === 'news' && <NewsAdminManager data={data} reload={reload} />}
           {tab === 'messages' && <MessagesManager data={data} reload={reload} />}
           {tab === 'shop' && <ShopAdminManager data={data} reload={reload} />}
-          {tab === 'security' && <SecurityManager />}
+          {tab === 'security' && <SecurityManager username={admin.username} />}
         </main>
       </div>
     </div>

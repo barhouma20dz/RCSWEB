@@ -101,6 +101,20 @@ async function adminAccounts(
   return { ok: res.ok, error: d.error }
 }
 
+/** تغيير اسم مستخدم مكتب فرع فقط — دون المساس بكلمة المرور */
+async function adminAccountsPatch(
+  branchId: string,
+  username: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await apiFetch('/api/admin/accounts', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branchId, username }),
+  })
+  const d = await res.json().catch(() => ({}))
+  return { ok: res.ok, error: d.error }
+}
+
 function formatDate(iso: string) {
   return formatDateDMY(iso)
 }
@@ -454,18 +468,43 @@ function AccountDialog({
   const [password, setPassword] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const accountExists = !!branch?.accountUsername
+  const usernameChanged = username.trim() !== (branch?.accountUsername ?? '')
+  /** تغيير الاسم فقط: الحساب موجود + الاسم تغيّر + كلمة المرور تُركت فارغة */
+  const usernameOnly = accountExists && usernameChanged && password.length === 0
+
   const save = async () => {
     if (!branch) return
-    if (!username.trim()) {
+    const uname = username.trim()
+    if (!uname) {
       toast({ title: 'اسم المستخدم مطلوب', variant: 'destructive' })
       return
     }
+    if (usernameOnly) {
+      // تغيير اسم المستخدم فقط — PATCH دون المساس بكلمة المرور
+      if (uname.length < 3) {
+        toast({ title: 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل', variant: 'destructive' })
+        return
+      }
+      setSaving(true)
+      const r = await adminAccountsPatch(branch.id, uname)
+      setSaving(false)
+      if (!r.ok) return toast({ title: r.error || 'خطأ غير متوقع', variant: 'destructive' })
+      toast({
+        title: 'تم تغيير اسم المستخدم',
+        description: 'كلمة المرور الحالية بقيت كما هي وستعمل بالاسم الجديد',
+      })
+      onSaved()
+      onClose()
+      return
+    }
+    // إنشاء الحساب أو تعيين اسم + كلمة مرور معاً — POST (السلوك الحالي)
     if (password.length < 6) {
       toast({ title: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل', variant: 'destructive' })
       return
     }
     setSaving(true)
-    const r = await adminAccounts(branch.id, username.trim(), password)
+    const r = await adminAccounts(branch.id, uname, password)
     setSaving(false)
     if (!r.ok) return toast({ title: r.error || 'خطأ غير متوقع', variant: 'destructive' })
     toast({ title: 'تم حفظ حساب المكتب' })
@@ -481,6 +520,11 @@ function AccountDialog({
             الحساب الحالي: <strong dir="ltr">{branch.accountUsername}</strong> — سيتم استبداله عند الحفظ
           </p>
         )}
+        {usernameOnly && (
+          <p className="text-xs font-bold text-(--club) bg-(--club-light)/70 border border-(--border) rounded-lg px-3 py-2">
+            الوضع المكتشف: تغيير اسم المستخدم فقط (كلمة المرور الحالية تبقى فعّالة دون تغيير)
+          </p>
+        )}
         <AField label="اسم المستخدم *">
           <Input
             value={username}
@@ -491,18 +535,23 @@ function AccountDialog({
             autoComplete="off"
           />
         </AField>
-        <AField label="كلمة المرور * (6 أحرف على الأقل)">
+        <AField label={accountExists ? 'كلمة المرور (اختيارية — 6 أحرف على الأقل)' : 'كلمة المرور * (6 أحرف على الأقل)'}>
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             dir="ltr"
             className="text-right"
-            placeholder="••••••"
+            placeholder={accountExists ? 'اتركها فارغة للإبقاء على كلمة المرور الحالية' : '••••••'}
             autoComplete="new-password"
           />
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            {accountExists
+              ? 'تلميح: اتركها فارغة لتغيير اسم المستخدم فقط دون المساس بكلمة المرور — أو أدخل كلمة مرور جديدة (6 أحرف فأكثر) لتعيينها مع الاسم معاً.'
+              : 'لا يوجد حساب لهذا الفرع بعد — تعيين كلمة مرور مطلوب لإنشائه.'}
+          </p>
         </AField>
-        <ASave saving={saving} onClick={save} label="حفظ الحساب" />
+        <ASave saving={saving} onClick={save} label={usernameOnly ? 'تغيير الاسم فقط' : 'حفظ الحساب'} />
       </div>
     </ADialog>
   )
@@ -552,7 +601,8 @@ export function BranchesManager({ data, reload }: { data: AdminData; reload: () 
         addLabel="فرع جديد"
       />
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-96 overflow-y-auto nice-scroll pl-1">
+      {/* شبكة الفروع — بكامل عرض الصفحة مع التمرير العمودي الطبيعي */}
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {data.branches.map((b) => (
           <div
             key={b.id}
@@ -767,7 +817,8 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
         </Select>
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+      {/* القائمة بكامل ارتفاع الصفحة — بدون قصّ */}
+      <div className="space-y-2">
         {filtered.map((e) => {
           const isMinor = !!e.parentName
           // صيغة التاريخ الموحدة: يوم/شهر/سنة
@@ -875,7 +926,7 @@ export function NewsAdminManager({ data, reload }: { data: AdminData; reload: ()
     <div>
       <PanelHeader title="كل الأخبار" desc="تعديل أو حذف أخبار جميع الفروع — الإضافة تتم من مكاتب الفروع" />
 
-      <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+      <div className="space-y-2">
         {data.news.map((n) => (
           <div key={n.id} className="rounded-xl border border-(--border) bg-white p-3 flex gap-3 items-center">
             {n.image && <img src={n.image} alt={n.title} className="h-14 w-20 rounded-lg object-cover shrink-0" />}
@@ -942,7 +993,7 @@ export function MessagesManager({ data, reload }: { data: AdminData; reload: () 
     <div>
       <PanelHeader title="رسائل التواصل" desc="رسائل الزوار الواردة من نموذج التواصل في الموقع" />
 
-      <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+      <div className="space-y-2">
         {data.messages.map((m) => (
           <div key={m.id} className="rounded-xl border border-(--border) bg-white p-4">
             <div className="flex items-start justify-between gap-2">
@@ -1133,7 +1184,8 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
               <Plus className="ml-1 h-4 w-4" /> منتج جديد
             </Button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto nice-scroll pl-1">
+          {/* شبكة المنتجات — تمتد بكامل العرض وتلتف لعدة صفوف كصفحة المتجر */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {data.products.map((p) => (
               <div key={p.id} className="rounded-xl border border-(--border) bg-white overflow-hidden group relative">
                 <div className="aspect-square bg-(--club-light)">
@@ -1193,7 +1245,7 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
         </TabsContent>
 
         <TabsContent value="orders">
-          <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+          <div className="space-y-2">
             {data.orders.map((o) => (
               <div
                 key={o.id}

@@ -50,7 +50,7 @@ export function AchievementsSection({ achievements }: { achievements: Achievemen
                       </span>
                     )}
                     {!a.branch && (
-                      <span className="bg-(--paper) text-(--ink) text-xs font-bold px-3 py-0.5 rounded-full">
+                      <span className="bg-(--primary) text-primary-foreground text-xs font-bold px-3 py-0.5 rounded-full">
                         النادي
                       </span>
                     )}

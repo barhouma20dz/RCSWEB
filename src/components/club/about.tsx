@@ -3,7 +3,14 @@
 import { motion } from 'framer-motion'
 import { Target, HeartHandshake, ShieldCheck, MapPin, Quote } from 'lucide-react'
 import { SettingsSectionHeader } from './shared'
-import { useT } from './i18n'
+import { useT, useLang } from './i18n'
+import { useSiteSettings, siteText } from './site-store'
+
+/** النصوص الافتراضية لكلمة الرئيس — تُستخدم عند غياب الإعداد أو تركه فارغاً */
+const DEFAULT_PRESIDENT_TEXT =
+  'النادي ليس مجرد ملعب وقاعة، بل مدرسة للحياة. كل طفل يرتدي قميص الرائد يتعلم الانضباط والصبر والفخر بالانتماء. نحن نستثمر في الإنسان قبل البطولة، ولذلك ستظل مدرجاتنا مفتوحة أمام كل شغيف بالرياضة في سعيدة — هلا بك في عائلة الرائد.'
+const DEFAULT_PRESIDENT_NAME = 'السيد عبد الرحمن بلقاسم'
+const DEFAULT_PRESIDENT_ROLE = 'رئيس النادي الرياضي الرائد'
 
 const values = [
   {
@@ -25,6 +32,17 @@ const values = [
 
 export function About() {
   const t = useT()
+  const lang = useLang((s) => s.lang)
+  const settings = useSiteSettings((s) => s.settings)
+  const pw = settings?.content?.presidentWord
+
+  // كلمة الرئيس من الإعدادات مع النصوص الثابتة كاحتياطي عند غياب الإعداد
+  const presidentText = siteText(pw?.text, lang, DEFAULT_PRESIDENT_TEXT)
+  const presidentName = pw?.name && pw.name.trim() ? pw.name.trim() : DEFAULT_PRESIDENT_NAME
+  const presidentRole = pw?.role && pw.role.trim() ? pw.role.trim() : DEFAULT_PRESIDENT_ROLE
+  // الحرف الأول من اسم الرئيس للدائرة
+  const presidentInitial = presidentName.charAt(0)
+
   return (
     <section id="about" className="py-16 md:py-24 relative overflow-hidden">
       <div className="absolute inset-0 subtle-pattern" />
@@ -71,17 +89,15 @@ export function About() {
                 كلمة رئيس النادي
               </h3>
               <p className="text-paper/85 leading-loose text-sm md:text-base">
-                &quot;النادي ليس مجرد ملعب وقاعة، بل مدرسة للحياة. كل طفل يرتدي قميص الرائد يتعلم
-                الانضباط والصبر والفخر بالانتماء. نحن نستثمر في الإنسان قبل البطولة، ولذلك ستظل
-                مدرجاتنا مفتوحة أمام كل شغيف بالرياضة في سعيدة — هلا بك في عائلة الرائد.&quot;
+                &quot;{presidentText}&quot;
               </p>
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-(--silver)/20 ring-2 ring-(--silver)/60 flex items-center justify-center text-(--silver) font-black text-lg">
-                  ر
+                  {presidentInitial}
                 </div>
                 <div>
-                  <div className="font-black text-paper">السيد عبد الرحمن بلقاسم</div>
-                  <div className="text-(--silver) text-sm font-bold">رئيس النادي الرياضي الرائد</div>
+                  <div className="font-black text-paper">{presidentName}</div>
+                  <div className="text-(--silver) text-sm font-bold">{presidentRole}</div>
                 </div>
               </div>
             </div>

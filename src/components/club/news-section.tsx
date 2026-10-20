@@ -32,7 +32,7 @@ export function NewsSection({ news }: { news: NewsItem[] }) {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${
               filter === 'all'
-                ? 'bg-(--paper) text-(--ink) shadow-md'
+                ? 'bg-(--primary) text-primary-foreground shadow-md'
                 : 'bg-(--chip) text-(--ink) hover:bg-(--accent)'
             }`}
           >

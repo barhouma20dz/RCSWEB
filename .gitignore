@@ -61,3 +61,7 @@ next-env.d.ts
 local-*
 .claude
 .z-ai-config
+
+# agent verification artifacts
+/.shots/
+/agent-ctx/
