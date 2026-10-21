@@ -23,6 +23,8 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  UserCog,
+  User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,6 +44,7 @@ interface SecurityEventItem {
 }
 
 interface SecurityPayload {
+  currentAdmin?: { username: string; name: string }
   usingDefaultPassword: boolean
   stats: { failedLogins7d: number; lockedAccounts7d: number; totalEvents: number }
   events: SecurityEventItem[]
@@ -55,6 +58,7 @@ const EVENT_META: Record<string, { label: string; cls: string; icon: React.Compo
   rate_limited: { label: 'تجاوز حد الطلبات', cls: 'bg-orange-500/12 text-orange-700 dark:text-orange-300 border-orange-500/30', icon: TimerReset },
   password_changed: { label: 'تغيير كلمة مرور', cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-500/30', icon: KeyRound },
   password_reset: { label: 'إعادة تعيين كلمة مرور', cls: 'bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/30', icon: RefreshCw },
+  account_updated: { label: 'تحديث بيانات الحساب', cls: 'bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/30', icon: KeyRound },
   invalid_token: { label: 'توكن غير صالح', cls: 'bg-red-500/12 text-red-700 dark:text-red-300 border-red-500/30', icon: ShieldAlert },
 }
 
@@ -78,8 +82,10 @@ export function SecurityManager() {
   const [loading, setLoading] = useState(true)
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [savingPw, setSavingPw] = useState(false)
+  const [savingUser, setSavingUser] = useState(false)
   const [form, setForm] = useState({ current: '', next: '', confirm: '' })
+  const [userForm, setUserForm] = useState({ username: '', name: '', password: '' })
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +96,13 @@ export function SecurityManager() {
       }
       const d = (await res.json()) as SecurityPayload
       setData(d)
+      if (d.currentAdmin) {
+        setUserForm((prev) => ({
+          ...prev,
+          username: d.currentAdmin?.username || 'admin',
+          name: d.currentAdmin?.name || 'إدارة النادي',
+        }))
+      }
     } catch {
       toast({ title: 'فشل تحميل الحالة الأمنية', variant: 'destructive' })
     } finally {
@@ -101,6 +114,38 @@ export function SecurityManager() {
     void load()
   }, [load])
 
+  const changeUsernameAndProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!userForm.password) {
+      toast({ title: 'يرجى إدخال كلمة المرور الحالية لتأكيد التغيير', variant: 'destructive' })
+      return
+    }
+    setSavingUser(true)
+    try {
+      const res = await apiFetch('/api/admin/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: userForm.password,
+          newUsername: userForm.username,
+          newName: userForm.name,
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'فشل تحديث اسم المستخدم')
+      toast({
+        title: 'تم تحديث اسم المستخدم والبيانات بنجاح',
+        description: `اسم المستخدم الجديد: ${d.username || userForm.username}`,
+      })
+      setUserForm((prev) => ({ ...prev, password: '' }))
+      void load()
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setSavingUser(false)
+    }
+  }
+
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.current || !form.next) return
@@ -108,7 +153,7 @@ export function SecurityManager() {
       toast({ title: 'كلمة المرور الجديدة والتأكيد غير متطابقين', variant: 'destructive' })
       return
     }
-    setSaving(true)
+    setSavingPw(true)
     try {
       const res = await apiFetch('/api/admin/password', {
         method: 'POST',
@@ -123,7 +168,7 @@ export function SecurityManager() {
     } catch (err) {
       toast({ title: (err as Error).message, variant: 'destructive' })
     } finally {
-      setSaving(false)
+      setSavingPw(false)
     }
   }
 
@@ -162,8 +207,74 @@ export function SecurityManager() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="space-y-5">
+        {/* تعديل اسم المستخدم وبيانات الحساب */}
+        <section className="rounded-2xl bg-white border border-(--border) p-5 shadow-sm">
+          <h3 className="font-black text-(--club-dark) flex items-center gap-2 mb-1">
+            <UserCog className="h-5 w-5 text-primary" />
+            تعديل اسم المستخدم والملف الإداري
+          </h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            تغيير اسم المستخدم لتسجيل الدخول أو الاسم الإداري المعروض في لوحة التحكم
+          </p>
+
+          <form onSubmit={changeUsernameAndProfile} className="space-y-3.5">
+            <div className="space-y-1.5">
+              <Label htmlFor="sec-username">اسم المستخدم (لتسجيل الدخول)</Label>
+              <div className="relative">
+                <Input
+                  id="sec-username"
+                  type="text"
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  placeholder="مثال: admin_crs أو president"
+                  className="pl-10 font-mono text-sm"
+                  dir="ltr"
+                  required
+                />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">أحرف أو أرقام إنجليزية ورموز (- _) فقط</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="sec-name">الاسم المعروض للإدارة</Label>
+              <Input
+                id="sec-name"
+                type="text"
+                value={userForm.name}
+                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                placeholder="مثال: إدارة نادي الرائد سعيدة"
+              />
+            </div>
+
+            <div className="space-y-1.5 pt-1 border-t border-(--border)/60">
+              <Label htmlFor="sec-user-pw" className="text-red-700 dark:text-red-400 font-bold">
+                كلمة المرور الحالية (لتأكيد الهوية) *
+              </Label>
+              <Input
+                id="sec-user-pw"
+                type="password"
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                placeholder="أدخل كلمة المرور الحالية لتأكيد التغيير"
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={savingUser || !userForm.username || !userForm.password}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              {savingUser ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <UserCog className="h-4 w-4 ml-1" />}
+              {savingUser ? 'جارٍ حفظ البيانات...' : 'حفظ اسم المستخدم والبيانات'}
+            </Button>
+          </form>
+        </section>
+
         {/* تغيير كلمة المرور */}
-        <section className="rounded-2xl bg-white border border-(--border) p-5">
+        <section className="rounded-2xl bg-white border border-(--border) p-5 shadow-sm">
           <h3 className="font-black text-(--club-dark) flex items-center gap-2 mb-1">
             <KeyRound className="h-5 w-5 text-primary" />
             تغيير كلمة مرور الإدارة
@@ -238,12 +349,13 @@ export function SecurityManager() {
               />
             </div>
 
-            <Button type="submit" disabled={saving || !form.current || !form.next || !form.confirm} className="w-full">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <KeyRound className="h-4 w-4 ml-1" />}
-              {saving ? 'جارٍ الحفظ...' : 'تغيير كلمة المرور'}
+            <Button type="submit" disabled={savingPw || !form.current || !form.next || !form.confirm} className="w-full">
+              {savingPw ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <KeyRound className="h-4 w-4 ml-1" />}
+              {savingPw ? 'جارٍ الحفظ...' : 'تغيير كلمة المرور'}
             </Button>
           </form>
         </section>
+      </div>
 
         {/* ملخص الحماية والإحصائيات */}
         <section className="space-y-4">

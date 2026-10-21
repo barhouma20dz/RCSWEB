@@ -21,6 +21,10 @@ export async function GET(req: NextRequest) {
     ])
 
     return NextResponse.json({
+      currentAdmin: {
+        username: admin.username,
+        name: admin.name,
+      },
       usingDefaultPassword: usingDefault,
       passwordAgeNote: 'مدة الجلسة 24 ساعة مع إبطال فوري لكل الجلسات عند تغيير كلمة المرور',
       stats: {

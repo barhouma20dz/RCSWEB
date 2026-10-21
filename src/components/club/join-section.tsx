@@ -150,7 +150,7 @@ function TrackCard() {
             onChange={(e) => setLastName(e.target.value)}
             placeholder={t('track.lastName')}
             aria-label={t('track.lastName')}
-            className="bg-white/95 text-(--club-dark) placeholder:text-muted-foreground border-paper/20 text-right"
+            className="bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 border-slate-300 dark:border-white/10 text-right"
           />
         </div>
         <div className="flex gap-2">
@@ -161,7 +161,7 @@ function TrackCard() {
             dir="ltr"
             inputMode="tel"
             aria-label={t('track.title')}
-            className="bg-white/95 text-(--club-dark) placeholder:text-muted-foreground border-paper/20 text-right"
+            className="bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 border-slate-300 dark:border-white/10 text-right"
           />
           <Button
             type="submit"
@@ -385,19 +385,19 @@ export function JoinSection({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="rounded-3xl bg-white p-6 md:p-8 shadow-2xl shadow-black/30 light:shadow-black/10"
+            className="rounded-3xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 p-6 md:p-8 shadow-2xl shadow-black/10 dark:shadow-black/40"
           >
             {done ? (
               <div className="text-center py-10">
-                <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
-                <h3 className="text-2xl font-black text-(--club-dark) mb-2">{t('join.doneTitle')}</h3>
+                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">{t('join.doneTitle')}</h3>
                 {doneBranch && (
-                  <p className="text-sm font-black text-(--club) mb-2">
+                  <p className="text-sm font-black text-(--club) dark:text-emerald-400 mb-2">
                     {t('join.sentTo')} — {doneBranch}
                   </p>
                 )}
-                <p className="text-muted-foreground leading-relaxed mb-6">{t('join.doneBody')}</p>
-                <Button onClick={() => setDone(false)} variant="outline" className="font-bold">
+                <p className="text-muted-foreground dark:text-slate-300 leading-relaxed mb-6">{t('join.doneBody')}</p>
+                <Button onClick={() => setDone(false)} variant="outline" className="font-bold border-slate-300 dark:border-white/20 text-foreground dark:text-white">
                   {t('join.again')}
                 </Button>
               </div>
@@ -406,13 +406,13 @@ export function JoinSection({
                 {/* ترويسة الاستمارة */}
                 <div className="flex items-start justify-between gap-3 mb-5">
                   <div>
-                    <h3 className="text-xl md:text-2xl font-black text-(--club-dark) leading-snug flex items-center gap-2">
+                    <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white leading-snug flex items-center gap-2">
                       <UserPlus className="h-6 w-6 text-(--flag-red) shrink-0" />
                       {t('join.formTitle')}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1.5">{t('join.formDesc')}</p>
+                    <p className="text-sm text-muted-foreground dark:text-slate-300 mt-1.5">{t('join.formDesc')}</p>
                   </div>
-                  <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full bg-(--flag-red)/10 border border-(--flag-red)/25 text-(--flag-red) px-3 py-1.5 text-xs font-black whitespace-nowrap">
+                  <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full bg-(--flag-red)/10 border border-(--flag-red)/30 text-(--flag-red) dark:text-red-400 px-3 py-1.5 text-xs font-black whitespace-nowrap">
                     <CalendarRange className="h-3.5 w-3.5" />
                     {season}
                   </span>
@@ -420,21 +420,21 @@ export function JoinSection({
 
                 {/* إشعار الاستمارة من الإعدادات */}
                 {formNotice && (
-                  <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-(--club)/20 bg-(--club-light) px-4 py-3">
-                    <Info className="h-5 w-5 text-(--club) shrink-0 mt-0.5" />
-                    <p className="text-xs md:text-sm font-bold text-(--club-dark) leading-relaxed">{formNotice}</p>
+                  <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-(--club)/20 bg-(--club-light) dark:border-white/15 dark:bg-slate-800/80 px-4 py-3">
+                    <Info className="h-5 w-5 text-(--club) dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <p className="text-xs md:text-sm font-bold text-(--club-dark) dark:text-slate-100 leading-relaxed">{formNotice}</p>
                   </div>
                 )}
 
                 <form onSubmit={submit} className="space-y-4">
                   {/* اختيار الفرع — بطاقات */}
                   <div>
-                    <Label className="text-sm font-black">{t('join.branchGrid')} *</Label>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">{t('join.branchGridHint')}</p>
+                    <Label className="text-sm font-black text-slate-900 dark:text-slate-200">{t('join.branchGrid')} *</Label>
+                    <p className="text-[11px] text-muted-foreground dark:text-slate-400 mt-0.5 mb-2">{t('join.branchGridHint')}</p>
                     <div
                       role="radiogroup"
                       aria-label={t('join.branchGrid')}
-                      className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto nice-scroll p-1 rounded-xl bg-(--club-light)/60 border border-(--border)"
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto nice-scroll p-1 rounded-xl bg-(--club-light)/60 border border-slate-200 dark:bg-slate-950/60 dark:border-white/10"
                     >
                       {branches.map((b) => {
                         const active = branchId === b.id
@@ -447,8 +447,8 @@ export function JoinSection({
                             onClick={() => setBranchId(b.id)}
                             className={`relative rounded-xl border-2 p-2.5 text-center transition-all duration-200 hover:-translate-y-0.5 ${
                               active
-                                ? 'shadow-md scale-[1.02] bg-white'
-                                : 'border-(--border) bg-white/80 hover:border-(--club)/40'
+                                ? 'shadow-md scale-[1.02] bg-white text-(--club-dark) dark:bg-slate-800 dark:text-white'
+                                : 'border-slate-200 bg-white/80 text-(--club-dark) hover:border-(--club)/40 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-slate-700'
                             }`}
                             style={active ? { borderColor: b.color } : undefined}
                           >
@@ -466,10 +466,10 @@ export function JoinSection({
                             >
                               <BranchIcon name={b.icon} className="h-5 w-5" />
                             </span>
-                            <span className="block text-[11px] font-black text-(--club-dark) leading-tight line-clamp-2 min-h-7">
+                            <span className="block text-[11px] font-black text-slate-900 dark:text-slate-100 leading-tight line-clamp-2 min-h-7">
                               {b.name}
                             </span>
-                            <span className="block text-[9px] font-bold tracking-wider text-muted-foreground mt-0.5" dir="ltr">
+                            <span className="block text-[9px] font-bold tracking-wider text-muted-foreground dark:text-slate-400 mt-0.5" dir="ltr">
                               {branchCode(b.slug)}
                             </span>
                           </button>
@@ -479,16 +479,16 @@ export function JoinSection({
                   </div>
 
                   {/* ====== معلومات المنخرط ====== */}
-                  <fieldset className="rounded-2xl border-2 border-(--border) bg-white p-4 space-y-3">
-                    <legend className="px-2 -mx-1 text-sm font-black text-(--club-dark) flex items-center gap-1.5">
-                      <User className="h-4 w-4 text-(--club)" />
+                  <fieldset className="rounded-2xl border-2 border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-950/40 p-4 space-y-3">
+                    <legend className="px-2 -mx-1 text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <User className="h-4 w-4 text-(--club) dark:text-emerald-400" />
                       {t('join.enrolleeSection')}
                     </legend>
 
                     {/* الاسم واللقب */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor="join-first">{t('join.firstName')}</Label>
+                        <Label htmlFor="join-first" className="text-slate-800 dark:text-slate-200 font-bold text-xs">{t('join.firstName')} *</Label>
                         <Input
                           id="join-first"
                           required
@@ -496,11 +496,11 @@ export function JoinSection({
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           placeholder={t('join.firstNamePlaceholder')}
-                          className="mt-1.5"
+                          className="mt-1.5 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="join-last">{t('join.lastName')}</Label>
+                        <Label htmlFor="join-last" className="text-slate-800 dark:text-slate-200 font-bold text-xs">{t('join.lastName')} *</Label>
                         <Input
                           id="join-last"
                           required
@@ -508,7 +508,7 @@ export function JoinSection({
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
                           placeholder={t('join.lastNamePlaceholder')}
-                          className="mt-1.5"
+                          className="mt-1.5 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -517,7 +517,7 @@ export function JoinSection({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {showGender && (
                         <div>
-                          <Label>{t('join.gender')}</Label>
+                          <Label className="text-slate-800 dark:text-slate-200 font-bold text-xs">{t('join.gender')} *</Label>
                           <div className="mt-1.5 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('join.gender')}>
                             <button
                               type="button"
@@ -527,7 +527,7 @@ export function JoinSection({
                               className={`h-10 rounded-xl border-2 font-black text-sm flex items-center justify-center gap-1.5 transition-all ${
                                 gender === 'male'
                                   ? 'border-(--club) bg-(--club) text-white shadow-md'
-                                  : 'border-(--border) bg-white text-(--club-dark) hover:border-(--club)/40'
+                                  : 'border-slate-200 bg-white text-(--club-dark) hover:border-(--club)/40 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:border-slate-600'
                               }`}
                             >
                               <User className="h-4 w-4" />
@@ -541,7 +541,7 @@ export function JoinSection({
                               className={`h-10 rounded-xl border-2 font-black text-sm flex items-center justify-center gap-1.5 transition-all ${
                                 gender === 'female'
                                   ? 'border-(--club) bg-(--club) text-white shadow-md'
-                                  : 'border-(--border) bg-white text-(--club-dark) hover:border-(--club)/40'
+                                  : 'border-slate-200 bg-white text-(--club-dark) hover:border-(--club)/40 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:border-slate-600'
                               }`}
                             >
                               <Users className="h-4 w-4" />
@@ -551,9 +551,9 @@ export function JoinSection({
                         </div>
                       )}
                       <div>
-                        <Label htmlFor="join-birth">{t('join.birthDate')}</Label>
+                        <Label htmlFor="join-birth" className="text-slate-800 dark:text-slate-200 font-bold text-xs">{t('join.birthDate')} *</Label>
                         <div className="relative mt-1.5">
-                          <Cake className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          <Cake className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-slate-400 pointer-events-none" />
                           <Input
                             id="join-birth"
                             required
@@ -561,22 +561,22 @@ export function JoinSection({
                             value={birthDate}
                             max={new Date().toISOString().slice(0, 10)}
                             onChange={(e) => setBirthDate(e.target.value)}
-                            className="pr-9 text-right"
+                            className="pr-9 text-right bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                             dir="ltr"
                           />
                         </div>
                         {birthDisplay ? (
-                          <span className="inline-flex items-center gap-1.5 mt-1.5 text-[11px] font-black text-(--club) bg-(--club-light) rounded-full px-2.5 py-0.5" dir="ltr">
+                          <span className="inline-flex items-center gap-1.5 mt-1.5 text-[11px] font-black text-(--club) bg-(--club-light) dark:text-emerald-400 dark:bg-emerald-950/60 dark:border dark:border-emerald-800/50 rounded-full px-2.5 py-0.5" dir="ltr">
                             <Cake className="h-3 w-3" />
                             {birthDisplay}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center mt-1.5 text-[10px] font-bold text-muted-foreground">
+                          <span className="inline-flex items-center mt-1.5 text-[10px] font-bold text-muted-foreground dark:text-slate-400">
                             {t('join.birthDateHint')}
                           </span>
                         )}
                         {age !== null && (
-                          <span className="inline-flex items-center gap-1 mt-1.5 mr-2 text-[11px] font-black text-(--club) bg-(--club-light) rounded-full px-2.5 py-0.5">
+                          <span className="inline-flex items-center gap-1 mt-1.5 mr-2 text-[11px] font-black text-(--club) bg-(--club-light) dark:text-emerald-400 dark:bg-emerald-950/60 dark:border dark:border-emerald-800/50 rounded-full px-2.5 py-0.5">
                             {t('join.computedAge')}: {age} {t('join.years')}
                           </span>
                         )}
@@ -586,9 +586,9 @@ export function JoinSection({
 
                   {/* ====== القسم الشرطي حسب العمر ====== */}
                   {age === null ? (
-                    <div className="rounded-2xl border-2 border-dashed border-(--border) bg-muted/40 px-4 py-3.5 flex items-center gap-2.5">
-                      <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <p className="text-xs font-bold text-muted-foreground">{t('join.dynamicHint')}</p>
+                    <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/50 px-4 py-3.5 flex items-center gap-2.5">
+                      <Info className="h-4 w-4 text-muted-foreground dark:text-slate-400 shrink-0" />
+                      <p className="text-xs font-bold text-muted-foreground dark:text-slate-300">{t('join.dynamicHint')}</p>
                     </div>
                   ) : isMinor ? (
                     /* ---- معلومات ولي الأمر (للأقل من سن الرشد) ---- */
@@ -597,21 +597,21 @@ export function JoinSection({
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="rounded-2xl border-2 border-amber-400/60 bg-amber-50/70 p-4 space-y-3"
+                      className="rounded-2xl border-2 border-amber-400/60 bg-amber-50/70 text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200 p-4 space-y-3"
                     >
-                      <legend className="px-2 -mx-1 text-sm font-black text-amber-800 flex items-center gap-1.5">
+                      <legend className="px-2 -mx-1 text-sm font-black text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
                         <ShieldCheck className="h-4 w-4" />
                         {guardianTitle}
                       </legend>
 
-                      <div className="flex items-center gap-2 rounded-xl bg-amber-100/80 border border-amber-300 px-3 py-2">
-                        <Users className="h-4 w-4 text-amber-700 shrink-0" />
-                        <p className="text-[11px] font-black text-amber-800">{t('join.guardianNotice')}</p>
+                      <div className="flex items-center gap-2 rounded-xl bg-amber-100/80 border border-amber-300 dark:bg-amber-900/40 dark:border-amber-600/50 px-3 py-2">
+                        <Users className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0" />
+                        <p className="text-[11px] font-black text-amber-800 dark:text-amber-200">{t('join.guardianNotice')}</p>
                       </div>
 
                       {/* الاسم الكامل لولي الأمر */}
                       <div>
-                        <Label htmlFor="join-guardian-name">{t('join.guardianName')}</Label>
+                        <Label htmlFor="join-guardian-name" className="text-amber-900 dark:text-amber-200 font-bold text-xs">{t('join.guardianName')} *</Label>
                         <Input
                           id="join-guardian-name"
                           required
@@ -619,15 +619,15 @@ export function JoinSection({
                           value={guardianName}
                           onChange={(e) => setGuardianName(e.target.value)}
                           placeholder={t('join.guardianNamePlaceholder')}
-                          className="mt-1.5"
+                          className="mt-1.5 bg-white border-amber-200 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                         />
                       </div>
 
                       {/* العنوان */}
                       <div>
-                        <Label htmlFor="join-guardian-address">{t('join.address')}</Label>
+                        <Label htmlFor="join-guardian-address" className="text-amber-900 dark:text-amber-200 font-bold text-xs">{t('join.address')}</Label>
                         <div className="relative mt-1.5">
-                          <Home className="absolute right-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          <Home className="absolute right-3 top-3 h-4 w-4 text-muted-foreground dark:text-slate-400 pointer-events-none" />
                           <Textarea
                             id="join-guardian-address"
                             required={requireAddress}
@@ -635,16 +635,16 @@ export function JoinSection({
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}
                             placeholder={t('join.addressPlaceholder')}
-                            className="pr-9"
+                            className="pr-9 bg-white border-amber-200 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                           />
                         </div>
                       </div>
 
                       {/* رقم هاتف ولي الأمر */}
                       <div>
-                        <Label htmlFor="join-guardian-phone">{t('join.phone')}</Label>
+                        <Label htmlFor="join-guardian-phone" className="text-amber-900 dark:text-amber-200 font-bold text-xs">{t('join.phone')} {requirePhone && '*'}</Label>
                         <div className="relative mt-1.5">
-                          <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-slate-400 pointer-events-none" />
                           <Input
                             id="join-guardian-phone"
                             required={requirePhone}
@@ -653,7 +653,7 @@ export function JoinSection({
                             placeholder="05xxxxxxxx"
                             dir="ltr"
                             inputMode="tel"
-                            className="pr-9 text-right"
+                            className="pr-9 text-right bg-white border-amber-200 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -665,23 +665,23 @@ export function JoinSection({
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="rounded-2xl border-2 border-green-500/40 bg-green-50/60 p-4 space-y-3"
+                      className="rounded-2xl border-2 border-emerald-400/60 bg-emerald-50/70 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-950/30 dark:text-emerald-200 p-4 space-y-3"
                     >
-                      <legend className="px-2 -mx-1 text-sm font-black text-green-800 flex items-center gap-1.5">
+                      <legend className="px-2 -mx-1 text-sm font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                         <User className="h-4 w-4" />
                         {adultTitle}
                       </legend>
 
-                      <div className="flex items-center gap-2 rounded-xl bg-green-100/70 border border-green-300 px-3 py-2">
-                        <BadgeCheck className="h-4 w-4 text-green-700 shrink-0" />
-                        <p className="text-[11px] font-black text-green-800">{t('join.adultNotice')}</p>
+                      <div className="flex items-center gap-2 rounded-xl bg-emerald-100/80 border border-emerald-300 dark:bg-emerald-900/40 dark:border-emerald-600/50 px-3 py-2">
+                        <BadgeCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                        <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-200">{t('join.adultNotice')}</p>
                       </div>
 
                       {/* العنوان الشخصي */}
                       <div>
-                        <Label htmlFor="join-adult-address">{t('join.address')}</Label>
+                        <Label htmlFor="join-adult-address" className="text-emerald-900 dark:text-emerald-200 font-bold text-xs">{t('join.address')}</Label>
                         <div className="relative mt-1.5">
-                          <Home className="absolute right-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          <Home className="absolute right-3 top-3 h-4 w-4 text-muted-foreground dark:text-slate-400 pointer-events-none" />
                           <Textarea
                             id="join-adult-address"
                             required={requireAddress}
@@ -689,16 +689,16 @@ export function JoinSection({
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}
                             placeholder={t('join.addressPlaceholder')}
-                            className="pr-9"
+                            className="pr-9 bg-white border-emerald-200 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                           />
                         </div>
                       </div>
 
                       {/* رقم الهاتف الشخصي */}
                       <div>
-                        <Label htmlFor="join-adult-phone">{t('join.phone')}</Label>
+                        <Label htmlFor="join-adult-phone" className="text-emerald-900 dark:text-emerald-200 font-bold text-xs">{t('join.phone')} {requirePhone && '*'}</Label>
                         <div className="relative mt-1.5">
-                          <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-slate-400 pointer-events-none" />
                           <Input
                             id="join-adult-phone"
                             required={requirePhone}
@@ -707,7 +707,7 @@ export function JoinSection({
                             placeholder="05xxxxxxxx"
                             dir="ltr"
                             inputMode="tel"
-                            className="pr-9 text-right"
+                            className="pr-9 text-right bg-white border-emerald-200 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -717,14 +717,14 @@ export function JoinSection({
                   {/* ملاحظات */}
                   {showNote && (
                     <div>
-                      <Label htmlFor="join-note">{t('join.note')}</Label>
+                      <Label htmlFor="join-note" className="text-slate-800 dark:text-slate-200 font-bold text-xs">{t('join.note')}</Label>
                       <Textarea
                         id="join-note"
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
                         placeholder={t('join.notePlaceholder')}
                         rows={2}
-                        className="mt-1.5"
+                        className="mt-1.5 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-400"
                       />
                     </div>
                   )}

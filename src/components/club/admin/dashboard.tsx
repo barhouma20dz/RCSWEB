@@ -16,6 +16,8 @@ import {
   Loader2,
   ShieldCheck,
   BookOpen,
+  Briefcase,
+  Trophy,
   Palette,
   Shield,
 } from 'lucide-react'
@@ -29,6 +31,7 @@ import {
   NewsAdminManager,
   MessagesManager,
   ShopAdminManager,
+  AchievementsManager,
 } from './managers'
 import { RecordsManager } from './records'
 import { MembersManager } from './members-manager'
@@ -39,19 +42,21 @@ import type { AdminAccount, AdminData } from '../types'
 type TabKey =
   | 'overview'
   | 'branches'
+  | 'records'
+  | 'achievements'
+  | 'members'
   | 'enrollments'
   | 'news'
   | 'messages'
   | 'shop'
-  | 'records'
-  | 'members'
   | 'siteSettings'
   | 'security'
 
 const tabs: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'overview', label: 'نظرة عامة', icon: LayoutDashboard },
   { key: 'branches', label: 'الفروع', icon: Building2 },
-  { key: 'records', label: 'كتب النادي', icon: BookOpen },
+  { key: 'records', label: 'مكتب النادي', icon: Briefcase },
+  { key: 'achievements', label: 'الإنجازات والألقاب', icon: Trophy },
   { key: 'members', label: 'إطارات الفروع', icon: Users },
   { key: 'enrollments', label: 'طلبات الانضمام', icon: Inbox },
   { key: 'news', label: 'الأخبار', icon: Newspaper },
@@ -135,8 +140,9 @@ export function AdminDashboard({
 
   const statCards = [
     { label: 'فرع رياضي', value: data.stats.branchesCount, icon: Building2 },
-    { label: 'إطار معيّن', value: data.stats.membersCount, icon: Users },
-    { label: 'وثيقة في كتب النادي', value: data.stats.documentsCount, icon: BookOpen },
+    { label: 'إنجاز ولقب مسجل', value: data.stats.achievementsCount ?? data.achievements?.length ?? 0, icon: Trophy },
+    { label: 'محرر في مكتب النادي', value: data.stats.documentsCount, icon: Briefcase },
+    { label: 'إطار معيّن بالفروع', value: data.stats.membersCount, icon: Users },
     { label: 'لاعب مسجل', value: data.stats.playersCount, icon: Users },
     { label: 'طلب انضمام معلق', value: data.stats.pendingEnrollments, icon: Inbox, alert: data.stats.pendingEnrollments > 0 },
     { label: 'رسالة تواصل', value: data.stats.messagesCount, icon: Mail },
@@ -152,7 +158,7 @@ export function AdminDashboard({
     <div className="min-h-screen bg-(--club-light) flex flex-col">
       {/* رأس الإدارة */}
       <header className="club-gradient sticky top-0 z-40 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div className="w-full max-w-[1760px] mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src="/images/logo.png"
@@ -168,19 +174,19 @@ export function AdminDashboard({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button onClick={onBack} variant="outline" size="sm" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
+            <Button onClick={onBack} variant="outline" size="sm" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white font-bold">
               <ArrowRight className="ml-1 h-4 w-4" /> الموقع
             </Button>
-            <Button onClick={doLogout} variant="outline" size="sm" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
+            <Button onClick={doLogout} variant="outline" size="sm" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white font-bold">
               <LogOut className="ml-1 h-4 w-4" /> خروج
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6">
+      <div className="flex-1 w-full max-w-[1760px] mx-auto px-4 sm:px-8 py-6 flex flex-col lg:flex-row gap-6">
         {/* القائمة الجانبية */}
-        <aside className="lg:w-60 shrink-0">
+        <aside className="lg:w-64 shrink-0">
           <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0" aria-label="أقسام الإدارة">
             {tabs.map((t) => {
               const active = tab === t.key
@@ -213,7 +219,7 @@ export function AdminDashboard({
                 <div className="absolute -left-8 -bottom-8 h-40 w-40 rounded-full bg-(--silver)/10" />
                 <h2 className="text-2xl font-black text-white">أهلاً بك في الإدارة العامة</h2>
                 <p className="text-white/75 mt-2 leading-relaxed max-w-2xl">
-                  من هنا تدير النادي بالكامل: الفروع وحسابات المكاتب، طلبات الانضمام، الأخبار، رسائل التواصل
+                  من هنا تدير النادي بالكامل: الفروع ومكتب النادي، طلبات الانضمام، الأخبار، الإنجازات والألقاب
                   ومتجر النادي — كل تغيير يظهر مباشرة على الموقع.
                 </p>
                 {data.stats.pendingEnrollments > 0 && (
@@ -248,6 +254,7 @@ export function AdminDashboard({
 
           {tab === 'branches' && <BranchesManager data={data} reload={reload} />}
           {tab === 'records' && <RecordsManager data={data} reload={reload} />}
+          {tab === 'achievements' && <AchievementsManager data={data} reload={reload} />}
           {tab === 'members' && <MembersManager data={data} reload={reload} />}
           {tab === 'siteSettings' && <SiteSettingsManager data={data} reload={reload} />}
           {tab === 'enrollments' && <EnrollmentsManager data={data} reload={reload} />}

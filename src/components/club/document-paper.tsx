@@ -61,18 +61,21 @@ function formatDate(d: string | Date): string {
 export function DocumentPaper({
   doc,
   compact = false,
+  id,
 }: {
   doc: Pick<
     ClubDocumentItem,
     'refNumber' | 'title' | 'type' | 'category' | 'content' | 'design' | 'createdAt' | 'member' | 'branch'
   >
   compact?: boolean
+  id?: string
 }) {
   const design = useMemo(() => parseDesign(doc.design), [doc.design])
   const accent = ACCENT_HEX[design.accent] ?? ACCENT_HEX.navy
 
   return (
     <div
+      id={id}
       className={`doc-paper doc-print-area mx-auto w-full ${compact ? 'max-w-[520px] p-5 sm:p-7' : 'max-w-[680px] p-6 sm:p-10'}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
@@ -90,7 +93,17 @@ export function DocumentPaper({
       )}
 
       <div className={compact ? 'relative px-2' : 'relative px-3'}>
-        {/* الترويسة */}
+        {/* الترويسة الوطنية الموحدة */}
+        <div className="text-center pb-2 mb-2 border-b border-neutral-300">
+          <div className={`${compact ? 'text-[9.5px]' : 'text-[11px]'} font-black tracking-wide text-neutral-800`}>
+            الجمهورية الجزائرية الديمقراطية الشعبية
+          </div>
+          <div className={`${compact ? 'text-[8px]' : 'text-[9.5px]'} font-bold text-neutral-600 mt-0.5`}>
+            وزارة الشباب والرياضة — ولاية سعيدة — مديرية الشباب والرياضة
+          </div>
+        </div>
+
+        {/* الترويسة الخاصة بالنادي */}
         <header className="flex items-start justify-between gap-3 border-b-2 pb-3" style={{ borderColor: accent }}>
           {design.showLogo ? (
             <div className="flex items-center gap-2.5 min-w-0">
@@ -181,4 +194,156 @@ export function DocumentPaper({
       </div>
     </div>
   )
+}
+
+/**
+ * دالة طباعة مخصصة للوثائق — تضمن:
+ * 1. عدم طباعة ترويسة وتذييل المتصفح (حذف التاريخ، الرابط، واسم الموقع)
+ * 2. بدء الوثيقة مباشرة من أعلى الصفحة الأولى A4 بدون أي صفحات بيضاء سابقة
+ * 3. ملاءمة دقيقة لقياس A4 القياسي
+ */
+export function printClubDocument(elementOrId?: HTMLElement | string | null) {
+  let targetEl: HTMLElement | null = null
+
+  if (typeof elementOrId === 'string') {
+    targetEl = document.getElementById(elementOrId)
+  } else if (elementOrId instanceof HTMLElement) {
+    targetEl = elementOrId
+  } else {
+    // الأولوية للورقة المعروضة في النافذة المنبثقة إن وُجدت، أو الورقة في الصفحة
+    const dialogPaper = document.querySelector('[role="dialog"] .doc-paper') as HTMLElement | null
+    const anyPaper = document.querySelector('.doc-paper') as HTMLElement | null
+    targetEl = dialogPaper || anyPaper
+  }
+
+  if (!targetEl) {
+    window.print()
+    return
+  }
+
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  iframe.style.visibility = 'hidden'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow?.document
+  if (!doc) {
+    window.print()
+    return
+  }
+
+  const clone = targetEl.cloneNode(true) as HTMLElement
+  clone.classList.add('doc-print-isolated')
+
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map((s) => s.outerHTML)
+    .join('\n')
+
+  doc.open()
+  doc.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title></title>
+  ${styles}
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0 !important;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      font-family: var(--font-cairo), 'Segoe UI', Tahoma, sans-serif !important;
+      direction: rtl;
+    }
+    .doc-print-isolated {
+      width: 210mm !important;
+      max-width: 210mm !important;
+      min-height: 297mm !important;
+      margin: 0 auto !important;
+      padding: 14mm 16mm !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      background: #fdfcf8 !important;
+      position: relative !important;
+      overflow: hidden !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .doc-paper-frame {
+      position: absolute !important;
+      inset: 8mm !important;
+      border: 1.5px solid var(--doc-accent, #1d2f5e) !important;
+      border-radius: 3px !important;
+      pointer-events: none !important;
+    }
+    .doc-paper-frame::after {
+      content: '' !important;
+      position: absolute !important;
+      inset: 3px !important;
+      border: 0.5px solid var(--doc-accent, #1d2f5e) !important;
+      border-radius: 2px !important;
+    }
+    .doc-stamp {
+      border: 2.5px solid var(--doc-accent, #1d2f5e) !important;
+      color: var(--doc-accent, #1d2f5e) !important;
+      border-radius: 9999px !important;
+      transform: rotate(-12deg) !important;
+      opacity: 0.85 !important;
+    }
+  </style>
+</head>
+<body>
+  ${clone.outerHTML}
+</body>
+</html>`)
+  doc.close()
+
+  const doPrint = () => {
+    try {
+      iframe.contentWindow?.focus()
+      iframe.contentWindow?.print()
+    } catch {
+      window.print()
+    } finally {
+      setTimeout(() => {
+        iframe.remove()
+      }, 3000)
+    }
+  }
+
+  const images = doc.querySelectorAll('img')
+  if (images.length === 0) {
+    setTimeout(doPrint, 250)
+  } else {
+    let loaded = 0
+    const total = images.length
+    const onImg = () => {
+      loaded++
+      if (loaded >= total) doPrint()
+    }
+    images.forEach((img) => {
+      if (img.complete) onImg()
+      else {
+        img.onload = onImg
+        img.onerror = onImg
+      }
+    })
+    setTimeout(doPrint, 800)
+  }
 }

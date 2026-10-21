@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     const admin = await getSessionAdmin(req)
     if (!admin) return unauthorized()
 
-    const [branchesCount, newsCount, playersCount, matchesCount, pendingEnrollments, messagesCount, pendingOrders, membersCount, documentsCount, branches, news, enrollments, messages, orders, products, members, documents, siteSetting] =
+    const [branchesCount, newsCount, playersCount, matchesCount, pendingEnrollments, messagesCount, pendingOrders, membersCount, documentsCount, achievementsCount, branches, news, enrollments, messages, orders, products, members, documents, achievements, siteSetting] =
       await Promise.all([
         db.branch.count(),
         db.news.count(),
@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
         db.shopOrder.count({ where: { status: 'pending' } }),
         db.branchMember.count(),
         db.clubDocument.count(),
+        db.achievement.count(),
         db.branch.findMany({
           orderBy: { sortOrder: 'asc' },
           include: {
@@ -52,6 +53,10 @@ export async function GET(req: NextRequest) {
             member: { select: { id: true, firstName: true, lastName: true, position: true } },
           },
         }),
+        db.achievement.findMany({
+          orderBy: { year: 'desc' },
+          include: { branch: { select: { id: true, name: true, slug: true, color: true } } },
+        }),
         db.siteSetting.findUnique({ where: { key: 'site' } }),
       ])
 
@@ -75,6 +80,7 @@ export async function GET(req: NextRequest) {
         pendingOrders,
         membersCount,
         documentsCount,
+        achievementsCount,
       },
       branches: branches.map((b) => ({
         id: b.id,
@@ -118,6 +124,7 @@ export async function GET(req: NextRequest) {
       products,
       members,
       documents,
+      achievements,
       settings,
     })
   } catch (e) {

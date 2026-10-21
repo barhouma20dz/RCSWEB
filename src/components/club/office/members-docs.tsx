@@ -62,7 +62,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
-import { DocumentPaper, DOC_TYPE_LABELS } from '../document-paper'
+import { DocumentPaper, DOC_TYPE_LABELS, printClubDocument } from '../document-paper'
 import type { BranchMemberItem, ClubDocumentItem, OfficeData } from '../types'
 
 /** المناصب الهرمية الرسمية — نفس ترتيب الإدارة العامة */
@@ -568,12 +568,12 @@ export function BranchDocumentsManager({ data }: { data: OfficeData }) {
           </DialogHeader>
           {viewDoc && (
             <>
-              <DocumentPaper doc={viewDoc} />
+              <DocumentPaper id="office-member-doc-paper" doc={viewDoc} />
               <div className="flex justify-end gap-2 doc-print-hide">
                 <Button variant="outline" onClick={() => setViewDoc(null)}>
                   إغلاق
                 </Button>
-                <Button onClick={() => window.print()} className="bg-(--club) hover:bg-(--club)/90 text-white font-bold">
+                <Button onClick={() => printClubDocument('office-member-doc-paper')} className="bg-(--club) hover:bg-(--club)/90 text-white font-bold">
                   <Printer className="h-4 w-4 ml-1" /> طباعة
                 </Button>
               </div>

@@ -5,6 +5,8 @@ import { Target, HeartHandshake, ShieldCheck, MapPin, Quote } from 'lucide-react
 import { SettingsSectionHeader } from './shared'
 import { useT } from './i18n'
 
+import { useSiteSettings } from './site-store'
+
 const values = [
   {
     icon: Target,
@@ -25,6 +27,18 @@ const values = [
 
 export function About() {
   const t = useT()
+  const settings = useSiteSettings((s) => s.settings)
+  const president = settings?.president
+  const presName = president?.name?.trim() || 'السيد عبد الرحمن بلقاسم'
+  const presTitle = president?.title?.trim() || 'رئيس النادي الرياضي الرائد'
+  const presSpeech =
+    president?.speech?.trim() ||
+    'النادي ليس مجرد ملعب وقاعة، بل مدرسة للحياة. كل طفل يرتدي قميص الرائد يتعلم الانضباط والصبر والفخر بالانتماء. نحن نستثمر في الإنسان قبل البطولة، ولذلك ستظل مدرجاتنا مفتوحة أمام كل شغيف بالرياضة في سعيدة — هلا بك في عائلة الرائد.'
+  const presInitial = president?.initial?.trim() || presName.replace(/^(السيد|الرئيس|الأستاذ)\s+/, '').charAt(0) || 'ر'
+  const presFacilities = president?.facilities && president.facilities.length > 0
+    ? president.facilities
+    : ['حي الملعب، بلدية سعيدة', 'ولاية سعيدة — الجزائر', 'ملعب بلدي + قاعة متعددة + مسبح']
+
   return (
     <section id="about" className="py-16 md:py-24 relative overflow-hidden">
       <div className="absolute inset-0 subtle-pattern" />
@@ -70,31 +84,25 @@ export function About() {
               <h3 className="text-xl md:text-2xl font-black text-paper mb-4">
                 كلمة رئيس النادي
               </h3>
-              <p className="text-paper/85 leading-loose text-sm md:text-base">
-                &quot;النادي ليس مجرد ملعب وقاعة، بل مدرسة للحياة. كل طفل يرتدي قميص الرائد يتعلم
-                الانضباط والصبر والفخر بالانتماء. نحن نستثمر في الإنسان قبل البطولة، ولذلك ستظل
-                مدرجاتنا مفتوحة أمام كل شغيف بالرياضة في سعيدة — هلا بك في عائلة الرائد.&quot;
+              <p className="text-paper/85 leading-loose text-sm md:text-base whitespace-pre-line">
+                &quot;{presSpeech}&quot;
               </p>
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-(--silver)/20 ring-2 ring-(--silver)/60 flex items-center justify-center text-(--silver) font-black text-lg">
-                  ر
+                  {presInitial}
                 </div>
                 <div>
-                  <div className="font-black text-paper">السيد عبد الرحمن بلقاسم</div>
-                  <div className="text-(--silver) text-sm font-bold">رئيس النادي الرياضي الرائد</div>
+                  <div className="font-black text-paper">{presName}</div>
+                  <div className="text-(--silver) text-sm font-bold">{presTitle}</div>
                 </div>
               </div>
             </div>
             <div className="hidden md:flex flex-col gap-3 text-paper/80 text-sm font-bold border-r border-paper/15 pr-6">
-              <span className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-(--silver) light:text-(--accent-deep2, var(--club))" /> حي الملعب، بلدية سعيدة
-              </span>
-              <span className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-(--silver) light:text-(--accent-deep2, var(--club))" /> ولاية سعيدة — الجزائر
-              </span>
-              <span className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-(--silver) light:text-(--accent-deep2, var(--club))" /> ملعب بلدي + قاعة متعددة + مسبح
-              </span>
+              {presFacilities.map((fac, idx) => (
+                <span key={idx} className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-(--silver) light:text-(--accent-deep2, var(--club))" /> {fac}
+                </span>
+              ))}
             </div>
           </div>
         </motion.div>

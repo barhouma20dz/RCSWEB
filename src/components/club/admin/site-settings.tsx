@@ -24,6 +24,8 @@ import {
   ClipboardList,
   User,
   Info,
+  Quote,
+  Trophy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,7 +40,7 @@ import { apiFetch } from '@/lib/session'
 import { ACCENT_PRESETS, applyAccent, useSiteSettings, HERO_PRESETS, DEFAULT_HERO_IMAGE } from '../site-store'
 import type { AdminData, SiteSettings, SectionKey } from '../types'
 
-type SectionTab = 'design' | 'texts' | 'contact' | 'enrollment' | 'layout'
+type SectionTab = 'design' | 'president' | 'stats' | 'texts' | 'contact' | 'enrollment' | 'layout'
 type TextLang = 'ar' | 'fr' | 'en'
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -87,6 +89,26 @@ const DEFAULT_SETTINGS: SiteSettings = {
   },
   texts: {},
   languages: { ar: true, fr: true, en: true },
+  president: {
+    name: 'أحمد بن علي',
+    title: 'رئيس النادي الرياضي الرائد',
+    speech: 'مرحباً بكم في الصرح الرياضي لبلدية سعيدة، حيث نربي الأجيال على حب الرياضة والأخلاق العالية والمنافسة الشريفة في كل الاختصاصات.',
+    facilities: [
+      'مجمع رياضي متكامل وقاعات مجهزة',
+      'أطقم تدريبية معتمدة ومؤهلة وطنياً',
+      'مدرسة لتكوين الفئات الصغرى والبراعم',
+      'متابعة طبية ونفسية دورية لكل الرياضيين',
+    ],
+  },
+  stats: {
+    manual: false,
+    branchesCount: 6,
+    playersCount: 450,
+    titlesCount: 18,
+    medalsCount: 64,
+    fansCount: 12500,
+    foundationYear: 2024,
+  },
 }
 
 function mergeDefaults(s: SiteSettings | null | undefined): SiteSettings {
@@ -98,6 +120,8 @@ function mergeDefaults(s: SiteSettings | null | undefined): SiteSettings {
     contact: { ...DEFAULT_SETTINGS.contact, ...s?.contact },
     enrollment: { ...DEFAULT_SETTINGS.enrollment, ...s?.enrollment },
     design: { ...DEFAULT_SETTINGS.design, ...s?.design },
+    president: { ...DEFAULT_SETTINGS.president, ...s?.president },
+    stats: { ...DEFAULT_SETTINGS.stats, ...s?.stats },
     sections: { ...DEFAULT_SETTINGS.sections, ...s?.sections },
     texts: { ...s?.texts },
     languages: { ...DEFAULT_SETTINGS.languages, ...s?.languages },
@@ -205,6 +229,8 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
 
   const tabs: Array<{ key: SectionTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { key: 'design', label: 'الهوية والتصميم', icon: Palette },
+    { key: 'president', label: 'كلمة الرئيس', icon: Quote },
+    { key: 'stats', label: 'الأرقام والإحصائيات', icon: Trophy },
     { key: 'texts', label: 'نصوص الواجهة والأقسام', icon: Type },
     { key: 'enrollment', label: 'استمارة الانخراط', icon: ClipboardList },
     { key: 'contact', label: 'معلومات التواصل', icon: Phone },
@@ -404,6 +430,222 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ===== كلمة رئيس النادي ===== */}
+        {tab === 'president' && (
+          <div className="space-y-6">
+            <div>
+              <Label className="text-base font-black text-(--club-dark) flex items-center gap-1.5">
+                <Quote className="h-5 w-5 text-primary" /> تعديل كلمة رئيس النادي
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">
+                تظهر هذه الكلمة في بطاقة رئيس النادي بقسم «عن النادي» بالصفحة الرئيسية مع مرافق النادي وإنجازاته.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>اسم الرئيس الكامل</Label>
+                <Input
+                  value={draft.president?.name ?? ''}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      president: { ...draft.president, name: e.target.value },
+                    })
+                  }
+                  placeholder="مثال: أحمد بن علي"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>الصفة الإدارية / المنصب</Label>
+                <Input
+                  value={draft.president?.title ?? ''}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      president: { ...draft.president, title: e.target.value },
+                    })
+                  }
+                  placeholder="مثال: رئيس النادي الرياضي الرائد"
+                />
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <Label>نص كلمة الرئيس *</Label>
+                <Textarea
+                  rows={4}
+                  value={draft.president?.speech ?? ''}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      president: { ...draft.president, speech: e.target.value },
+                    })
+                  }
+                  placeholder="كلمة الرئيس التوجيهية والترحيبية للرياضيين والجمهور..."
+                />
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <Label>أبرز منشآت ومرافق النادي (سطر لكل منشأة أو ميزة)</Label>
+                <Textarea
+                  rows={4}
+                  value={draft.president?.facilities?.join('\n') ?? ''}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      president: {
+                        ...draft.president,
+                        facilities: e.target.value.split('\n').filter((l) => l.trim()),
+                      },
+                    })
+                  }
+                  placeholder={'مجمع رياضي متكامل وقاعات مجهزة\nأطقم تدريبية معتمدة ومؤهلة وطنياً\nمدرسة لتكوين الفئات الصغرى والبراعم\nمتابعة طبية ونفسية دورية لكل الرياضيين'}
+                />
+                <p className="text-[11px] text-muted-foreground">تظهر كقائمة نقاط في بطاقة المنشآت والمرافق بالصفحة الرئيسية</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== الأرقام والإحصائيات ===== */}
+        {tab === 'stats' && (
+          <div className="space-y-6">
+            <div>
+              <Label className="text-base font-black text-(--club-dark) flex items-center gap-1.5">
+                <Trophy className="h-5 w-5 text-primary" /> الأرقام والإحصائيات بالصفحة الرئيسية
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">
+                تحكم في الأرقام والإحصائيات المعروضة في شريط إحصائيات الواجهة الرئيسية — حساب آلي حسب ما يوجد بالفروع أو تخصيص يدوي.
+              </p>
+            </div>
+
+            {/* مفتاح التبديل بين الآلي واليدوي */}
+            <div className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--club-light)/50 p-4">
+              <div>
+                <div className="font-bold text-sm text-(--club-dark)">
+                  تفعيل الإدخال اليدوي المخصص للأرقام
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  عند التعطيل: تُحسب الأرقام تلقائياً (عدد الفروع الظاهرة، إجمالي اللاعبين المسجلين، والألقاب من إدارة الإنجازات).
+                </p>
+              </div>
+              <Switch
+                checked={draft.stats?.manual ?? false}
+                onCheckedChange={(v) =>
+                  setDraft({ ...draft, stats: { ...draft.stats, manual: v } })
+                }
+              />
+            </div>
+
+            {draft.stats?.manual && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 rounded-2xl border border-(--border) bg-white">
+                <div className="space-y-1.5">
+                  <Label>عدد الفروع الرياضية</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.stats?.branchesCount ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        stats: { ...draft.stats, branchesCount: Number(e.target.value) || 0 },
+                      })
+                    }
+                    dir="ltr"
+                    className="text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>عدد الرياضيين والمنخرطين</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.stats?.playersCount ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        stats: { ...draft.stats, playersCount: Number(e.target.value) || 0 },
+                      })
+                    }
+                    dir="ltr"
+                    className="text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>عدد الألقاب والبطولات</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.stats?.titlesCount ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        stats: { ...draft.stats, titlesCount: Number(e.target.value) || 0 },
+                      })
+                    }
+                    dir="ltr"
+                    className="text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>عدد الميداليات والتتويجات</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.stats?.medalsCount ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        stats: { ...draft.stats, medalsCount: Number(e.target.value) || 0 },
+                      })
+                    }
+                    dir="ltr"
+                    className="text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>عدد الأنصار والمتابعين</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.stats?.fansCount ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        stats: { ...draft.stats, fansCount: Number(e.target.value) || 0 },
+                      })
+                    }
+                    dir="ltr"
+                    className="text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>سنة التأسيس</Label>
+                  <Input
+                    type="number"
+                    min={1900}
+                    value={draft.stats?.foundationYear ?? 2024}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        stats: { ...draft.stats, foundationYear: Number(e.target.value) || 2024 },
+                      })
+                    }
+                    dir="ltr"
+                    className="text-right"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

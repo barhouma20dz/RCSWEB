@@ -23,6 +23,7 @@ import {
   UserCheck,
   Eye,
   EyeOff,
+  Trophy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,7 @@ import type {
   ContactMessageItem,
   ShopOrderItem,
   ProductItem,
+  AchievementItem,
 } from '../types'
 
 // ==================== استدعاءات API الإدارة ====================
@@ -552,7 +554,7 @@ export function BranchesManager({ data, reload }: { data: AdminData; reload: () 
         addLabel="فرع جديد"
       />
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-96 overflow-y-auto nice-scroll pl-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
         {data.branches.map((b) => (
           <div
             key={b.id}
@@ -767,7 +769,7 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
         </Select>
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+      <div className="space-y-3">
         {filtered.map((e) => {
           const isMinor = !!e.parentName
           // صيغة التاريخ الموحدة: يوم/شهر/سنة
@@ -775,7 +777,7 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
           return (
             <div
               key={e.id}
-              className="rounded-xl border border-(--border) bg-white px-4 py-3 flex flex-wrap items-center gap-3"
+              className="rounded-xl border border-(--border) bg-white px-4 py-3 flex flex-wrap items-center gap-3 shadow-xs"
             >
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
@@ -875,9 +877,9 @@ export function NewsAdminManager({ data, reload }: { data: AdminData; reload: ()
     <div>
       <PanelHeader title="كل الأخبار" desc="تعديل أو حذف أخبار جميع الفروع — الإضافة تتم من مكاتب الفروع" />
 
-      <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {data.news.map((n) => (
-          <div key={n.id} className="rounded-xl border border-(--border) bg-white p-3 flex gap-3 items-center">
+          <div key={n.id} className="rounded-xl border border-(--border) bg-white p-3 flex gap-3 items-center shadow-xs">
             {n.image && <img src={n.image} alt={n.title} className="h-14 w-20 rounded-lg object-cover shrink-0" />}
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
@@ -898,7 +900,7 @@ export function NewsAdminManager({ data, reload }: { data: AdminData; reload: ()
             </div>
           </div>
         ))}
-        {data.news.length === 0 && <AEmpty icon={Newspaper} text="لا توجد أخبار بعد" />}
+        {data.news.length === 0 && <div className="col-span-full"><AEmpty icon={Newspaper} text="لا توجد أخبار بعد" /></div>}
       </div>
 
       <ADialog open={open} onClose={() => setOpen(false)} title="تعديل الخبر">
@@ -942,9 +944,9 @@ export function MessagesManager({ data, reload }: { data: AdminData; reload: () 
     <div>
       <PanelHeader title="رسائل التواصل" desc="رسائل الزوار الواردة من نموذج التواصل في الموقع" />
 
-      <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {data.messages.map((m) => (
-          <div key={m.id} className="rounded-xl border border-(--border) bg-white p-4">
+          <div key={m.id} className="rounded-xl border border-(--border) bg-white p-4 shadow-xs">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-bold text-sm">{m.name}</div>
@@ -963,7 +965,7 @@ export function MessagesManager({ data, reload }: { data: AdminData; reload: () 
             <p className="text-sm mt-2 leading-relaxed text-foreground/85">{m.message}</p>
           </div>
         ))}
-        {data.messages.length === 0 && <AEmpty icon={Mail} text="لا توجد رسائل بعد" />}
+        {data.messages.length === 0 && <div className="col-span-full"><AEmpty icon={Mail} text="لا توجد رسائل بعد" /></div>}
       </div>
 
       <AConfirm open={!!del} onClose={() => setDel(null)} onConfirm={remove} name={del?.name} />
@@ -1133,9 +1135,9 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
               <Plus className="ml-1 h-4 w-4" /> منتج جديد
             </Button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto nice-scroll pl-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {data.products.map((p) => (
-              <div key={p.id} className="rounded-xl border border-(--border) bg-white overflow-hidden group relative">
+              <div key={p.id} className="rounded-xl border border-(--border) bg-white overflow-hidden group relative shadow-xs hover:shadow-md transition-shadow">
                 <div className="aspect-square bg-(--club-light)">
                   {p.image ? (
                     <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
@@ -1163,7 +1165,7 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 bg-white/90"
+                    className="h-7 w-7 bg-white/90 shadow-sm"
                     aria-label="تعديل المنتج"
                     onClick={() => {
                       setEdit(p)
@@ -1175,7 +1177,7 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 bg-white/90 text-destructive"
+                    className="h-7 w-7 bg-white/90 text-destructive shadow-sm"
                     aria-label="حذف المنتج"
                     onClick={() => setDelProduct(p)}
                   >
@@ -1193,11 +1195,11 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
         </TabsContent>
 
         <TabsContent value="orders">
-          <div className="space-y-2 max-h-96 overflow-y-auto nice-scroll pl-1">
+          <div className="space-y-3">
             {data.orders.map((o) => (
               <div
                 key={o.id}
-                className="rounded-xl border border-(--border) bg-white px-4 py-3 flex flex-wrap items-center gap-3"
+                className="rounded-xl border border-(--border) bg-white px-4 py-3 flex flex-wrap items-center gap-3 shadow-xs"
               >
                 {o.product.image && (
                   <img src={o.product.image} alt={o.product.name} className="h-12 w-12 rounded-lg object-cover shrink-0" />
@@ -1251,6 +1253,267 @@ export function ShopAdminManager({ data, reload }: { data: AdminData; reload: ()
       )}
       <AConfirm open={!!delProduct} onClose={() => setDelProduct(null)} onConfirm={removeProduct} name={delProduct?.name} />
       <AConfirm open={!!delOrder} onClose={() => setDelOrder(null)} onConfirm={removeOrder} name={delOrder?.customerName} />
+    </div>
+  )
+}
+
+// ==================== إدارة الإنجازات والألقاب ====================
+
+type AchievementForm = {
+  title: string
+  year: string
+  description: string
+  branchId: string
+}
+
+function AchievementDialog({
+  open,
+  edit,
+  branches,
+  onClose,
+  onSaved,
+}: {
+  open: boolean
+  edit: AchievementItem | null
+  branches: { id: string; name: string }[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { toast } = useToast()
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<AchievementForm>({
+    title: edit?.title ?? '',
+    year: edit?.year ?? new Date().getFullYear().toString(),
+    description: edit?.description ?? '',
+    branchId: edit?.branchId ?? 'none',
+  })
+
+  const save = async () => {
+    if (!form.title.trim()) {
+      toast({ title: 'عنوان الإنجاز مطلوب', variant: 'destructive' })
+      return
+    }
+    if (!form.year.trim()) {
+      toast({ title: 'سنة الإنجاز مطلوبة', variant: 'destructive' })
+      return
+    }
+    setSaving(true)
+    const payload = {
+      title: form.title.trim(),
+      year: form.year.trim(),
+      description: form.description.trim(),
+      branchId: form.branchId === 'none' ? null : form.branchId,
+    }
+    const r = await adminItems(edit ? 'update' : 'create', 'achievement', {
+      ...(edit ? { id: edit.id } : {}),
+      data: payload,
+    })
+    setSaving(false)
+    if (!r.ok) return toast({ title: r.error || 'فشل حفظ الإنجاز', variant: 'destructive' })
+    toast({ title: edit ? 'تم تحديث الإنجاز بنجاح' : 'تمت إضافة الإنجاز بنجاح' })
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <ADialog open={open} onClose={onClose} title={edit ? 'تعديل الإنجاز / اللقب' : 'تسجيل إنجاز أو لقب جديد'}>
+      <div className="space-y-3.5">
+        <AField label="عنوان الإنجاز أو اللقب *">
+          <Input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="مثال: بطل كأس الولاية، الميدالية الذهبية الوطنية..."
+          />
+        </AField>
+
+        <div className="grid grid-cols-2 gap-3">
+          <AField label="السنة / الموسم *">
+            <Input
+              value={form.year}
+              onChange={(e) => setForm({ ...form, year: e.target.value })}
+              placeholder="مثال: 2026 أو 2025/2026"
+              dir="ltr"
+              className="text-right"
+            />
+          </AField>
+
+          <AField label="الفرع المعني">
+            <Select
+              value={form.branchId}
+              onValueChange={(v) => setForm({ ...form, branchId: v })}
+              dir="rtl"
+            >
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="اختر الفرع" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">عام (لكل النادي)</SelectItem>
+                {branches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </AField>
+        </div>
+
+        <AField label="تفاصيل الإنجاز (اختياري)">
+          <Textarea
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="وصف إضافي، الفئة العمرية، المنافسة، أو اسم الفريق والمدرب..."
+          />
+        </AField>
+
+        <ASave saving={saving} onClick={save} label={edit ? 'حفظ التعديلات' : 'تسجيل الإنجاز'} />
+      </div>
+    </ADialog>
+  )
+}
+
+export function AchievementsManager({ data, reload }: { data: AdminData; reload: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [edit, setEdit] = useState<AchievementItem | null>(null)
+  const [del, setDel] = useState<AchievementItem | null>(null)
+  const [branchFilter, setBranchFilter] = useState('all')
+  const { toast } = useToast()
+
+  const achievements = data.achievements ?? []
+  const filtered = achievements.filter((a) => {
+    if (branchFilter === 'all') return true
+    if (branchFilter === 'general') return !a.branchId
+    return a.branchId === branchFilter
+  })
+
+  const remove = async () => {
+    if (!del) return
+    const r = await adminItems('delete', 'achievement', { id: del.id })
+    if (!r.ok) return toast({ title: r.error || 'خطأ غير متوقع', variant: 'destructive' })
+    toast({ title: 'تم حذف الإنجاز' })
+    setDel(null)
+    reload()
+  }
+
+  return (
+    <div>
+      <PanelHeader
+        title="الإنجازات والألقاب"
+        desc="تسجيل الألقاب والبطولات والتتويجات يدوياً وتخصيصها للفروع الرياضية — تظهر في سجل الشرف بالصفحة الرئيسية"
+        onAdd={() => {
+          setEdit(null)
+          setOpen(true)
+        }}
+        addLabel="إنجاز جديد"
+      />
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Select value={branchFilter} onValueChange={setBranchFilter} dir="rtl">
+          <SelectTrigger className="w-56 bg-white">
+            <SelectValue placeholder="تصفية حسب الفرع" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الإنجازات ({achievements.length})</SelectItem>
+            <SelectItem value="general">إنجازات عامة للنادي</SelectItem>
+            {data.branches.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filtered.map((a) => {
+          const branch = data.branches.find((b) => b.id === a.branchId)
+          return (
+            <div
+              key={a.id}
+              className="rounded-2xl border border-(--border) bg-white p-4 shadow-xs hover:shadow-md transition-shadow relative group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                    <Trophy className="h-5 w-5" />
+                  </div>
+                  <span className="font-black text-xs px-2.5 py-1 rounded-full bg-(--club-light) text-(--club-dark) border border-(--border)">
+                    {a.year}
+                  </span>
+                </div>
+
+                <h4 className="font-black text-base text-(--club-dark) line-clamp-2">{a.title}</h4>
+
+                {branch ? (
+                  <div className="mt-2">
+                    <BranchBadge name={branch.name} color={branch.color} />
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      إنجاز عام للنادي
+                    </span>
+                  </div>
+                )}
+
+                {a.description && (
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">
+                    {a.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-(--border)/60">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs font-bold text-foreground hover:bg-muted"
+                  onClick={() => {
+                    setEdit(a)
+                    setOpen(true)
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5 ml-1" />
+                  تعديل
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs font-bold text-destructive hover:bg-destructive/10"
+                  onClick={() => setDel(a)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 ml-1" />
+                  حذف
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+
+        {filtered.length === 0 && (
+          <div className="col-span-full">
+            <AEmpty icon={Trophy} text="لا توجد إنجازات مسجلة بعد — أضف أول لقب أو بطولة للنادي الآن" />
+          </div>
+        )}
+      </div>
+
+      {open && (
+        <AchievementDialog
+          open={open}
+          edit={edit}
+          branches={data.branches}
+          onClose={() => setOpen(false)}
+          onSaved={reload}
+        />
+      )}
+
+      <AConfirm
+        open={!!del}
+        onClose={() => setDel(null)}
+        onConfirm={remove}
+        name={del?.title}
+      />
     </div>
   )
 }

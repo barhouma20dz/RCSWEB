@@ -65,9 +65,26 @@ export async function GET() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 6)
 
-    const titlesCount = achievements.filter((a) =>
-      /بطل|كأس|لقب|ذهبية|ميداليات|دوري|تأسيس/.test(a.title)
-    ).length + 12
+    const autoTitles = achievements.length
+    const customStats = (settings as { stats?: Record<string, unknown> } | null)?.stats
+
+    const stats = customStats?.manual
+      ? {
+          branchesCount: Number(customStats.branchesCount ?? branchesCount),
+          playersCount: Number(customStats.playersCount ?? playersCount),
+          titlesCount: Number(customStats.titlesCount ?? autoTitles),
+          foundationYear: Number(customStats.foundationYear ?? 2024),
+          fansCount: Number(customStats.fansCount ?? 12500),
+          medalsCount: Number(customStats.medalsCount ?? 48),
+        }
+      : {
+          branchesCount,
+          playersCount,
+          titlesCount: autoTitles,
+          foundationYear: 2024,
+          fansCount: 12500,
+          medalsCount: Math.max(autoTitles * 2, 24),
+        }
 
     return NextResponse.json({
       branches,
@@ -79,14 +96,7 @@ export async function GET() {
       videos,
       products,
       settings,
-      stats: {
-        branchesCount,
-        playersCount,
-        titlesCount,
-        foundationYear: 2024,
-        fansCount: 12500,
-        medalsCount: 48,
-      },
+      stats,
     })
   } catch (e) {
     console.error('home error', e)

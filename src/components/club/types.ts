@@ -253,6 +253,24 @@ export interface SiteSettings {
   /** عناوين أقسام الصفحة الرئيسية حسب الذوق (تتجاوز النصوص الافتراضية) */
   texts?: Partial<Record<string, SectionTexts>>
   languages?: { ar?: boolean; fr?: boolean; en?: boolean }
+  /** كلمة رئيس النادي القابلة للتخصيص */
+  president?: {
+    name?: string
+    title?: string
+    speech?: string
+    initial?: string
+    facilities?: string[]
+  }
+  /** إحصائيات وأرقام الواجهة الرئيسية (تلقائية أو يدوية) */
+  stats?: {
+    manual?: boolean
+    branchesCount?: number
+    playersCount?: number
+    titlesCount?: number
+    medalsCount?: number
+    fansCount?: number
+    foundationYear?: number
+  }
 }
 
 export interface BranchWithAccount extends BranchSummary {
@@ -360,6 +378,7 @@ export interface AdminData {
     pendingOrders: number
     membersCount: number
     documentsCount: number
+    achievementsCount?: number
   }
   branches: BranchWithAccount[]
   news: NewsItem[]
@@ -367,6 +386,7 @@ export interface AdminData {
   messages: ContactMessageItem[]
   orders: ShopOrderItem[]
   products: ProductItem[]
+  achievements?: AchievementItem[]
   members: BranchMemberItem[]
   documents: ClubDocumentItem[]
   settings: SiteSettings | null

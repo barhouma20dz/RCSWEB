@@ -15,9 +15,11 @@ export const THEME_STORAGE_KEY = 'raed-theme'
 function applyTheme(theme: Theme) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  root.classList.toggle('light', theme === 'light')
+  const isLight = theme === 'light'
+  root.classList.toggle('light', isLight)
+  root.classList.toggle('dark', !isLight)
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', theme === 'light' ? '#f2f5fa' : '#0f1b3a')
+  if (meta) meta.setAttribute('content', isLight ? '#f2f5fa' : '#0f1b3a')
 }
 
 interface ThemeState {

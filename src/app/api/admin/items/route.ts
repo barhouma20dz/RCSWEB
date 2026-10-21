@@ -43,6 +43,13 @@ const videoSchema = z.object({
   branchId: z.string().optional(),
 })
 
+const achievementSchema = z.object({
+  title: z.string().min(2, 'عنوان الإنجاز مطلوب'),
+  year: z.string().min(2, 'السنة مطلوبة'),
+  description: z.string().max(1000).optional().default(''),
+  branchId: z.string().nullable().optional(),
+})
+
 const orderStatusSchema = z.object({
   status: z.enum(['pending', 'done']),
 })
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
     const id = body?.id as string | undefined
     const data = body?.data ?? {}
 
-    if (!['news', 'enrollment', 'message', 'product', 'order', 'video'].includes(type)) {
+    if (!['news', 'enrollment', 'message', 'product', 'order', 'video', 'achievement'].includes(type)) {
       return NextResponse.json({ error: 'نوع غير معروف' }, { status: 400 })
     }
     if (!['create', 'update', 'delete'].includes(action)) {
@@ -262,6 +269,47 @@ export async function POST(req: NextRequest) {
       const existing = await db.videoItem.findUnique({ where: { id } })
       if (!existing) return itemNotFound()
       const item = await db.videoItem.update({ where: { id }, data: payload })
+    }
+
+    // ===== الإنجازات والألقاب =====
+    if (type === 'achievement') {
+      if (action === 'delete') {
+        if (!id) return missingId()
+        const existing = await db.achievement.findUnique({ where: { id } })
+        if (!existing) return itemNotFound()
+        await db.achievement.delete({ where: { id } })
+        return NextResponse.json({ success: true })
+      }
+
+      const parsed = achievementSchema.safeParse(data)
+      if (!parsed.success) return NextResponse.json({ error: firstIssue(parsed.error) }, { status: 400 })
+      if (parsed.data.branchId && !(await ensureBranchExists(parsed.data.branchId))) {
+        return NextResponse.json({ error: 'الفرع المحدد غير موجود' }, { status: 400 })
+      }
+
+      const payload = {
+        title: parsed.data.title,
+        year: parsed.data.year,
+        description: parsed.data.description || '',
+        branchId: parsed.data.branchId || null,
+      }
+
+      if (action === 'create') {
+        const item = await db.achievement.create({
+          data: payload,
+          include: { branch: { select: { id: true, name: true, slug: true, color: true } } },
+        })
+        return NextResponse.json({ success: true, item })
+      }
+
+      if (!id) return missingId()
+      const existing = await db.achievement.findUnique({ where: { id } })
+      if (!existing) return itemNotFound()
+      const item = await db.achievement.update({
+        where: { id },
+        data: payload,
+        include: { branch: { select: { id: true, name: true, slug: true, color: true } } },
+      })
       return NextResponse.json({ success: true, item })
     }
 
