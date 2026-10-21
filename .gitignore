@@ -62,6 +62,13 @@ local-*
 .claude
 .z-ai-config
 
+# vercel cli link artifacts
+.vercel
+
 # agent verification artifacts
 /.shots/
 /agent-ctx/
+
+# vercel cli
+.env*
+!.env.example

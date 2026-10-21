@@ -21,7 +21,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // محلياً: standalone للتشغيل الذاتي — على Vercel: نترك Vercel يدير الإخراج بنفسه
+  output: process.env.VERCEL === "1" ? undefined : "standalone",
+  // تضمين قاعدة البيانات (المُنشأة والمُعبّأة أثناء البناء) مع كل حزمة دوال السيرفر
+  outputFileTracingIncludes: {
+    "/**": ["./db/**"],
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
