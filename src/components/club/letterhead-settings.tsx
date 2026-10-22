@@ -185,7 +185,7 @@ export function PaperWatermark({ size = '55%' }: { size?: string }) {
       src="/images/logo-full.png"
       alt=""
       aria-hidden
-      className="pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-auto -translate-x-1/2 -translate-y-1/2 opacity-[0.04] select-none"
+      className="doc-watermark pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-auto -translate-x-1/2 -translate-y-1/2 opacity-[0.04] select-none"
       style={{ height: size }}
     />
   )

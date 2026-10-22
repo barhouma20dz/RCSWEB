@@ -4,7 +4,8 @@
  * مكتبة النماذج الإدارية الرسمية لمكتب النادي (الإدارة العامة):
  *
  * 1) استعمال الزمن — جدول حصص المدرب الأسبوعي (7 أيام × فترات قابلة للتسمية)
- * 2) عقد عمل محدد المدة (CDD) — بالمواد العشر كما في النموذج الرسمي
+ * 2) عقد عمل محدد المدة (CDD) — النموذج الرسمي الكامل: 14 مادة + الملحق رقم 01
+ *    (بطاقة المنصب والمهام) في صفحة مستقلة — عقد واحد لكل الفروع الرياضية
  * 3) محضر استئناف العمل — بعد استيفاء العطلة
  * 4) طلب وسيلة نقل — مراسلة للمجلس الشعبي البلدي
  * 5) جدول إرسال (Bordereau d'envoi) — بقائمة الوثائق والأعداد
@@ -84,15 +85,18 @@ function PaperShell({
   children,
   printable = true,
   wide = false,
+  flow = false,
 }: {
   children: React.ReactNode
   printable?: boolean
   wide?: boolean
+  /** ورقة ممتدة على عدة صفحات (العقود) — بلا إطار زخرفي عند الطباعة */
+  flow?: boolean
 }) {
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full ${wide ? 'max-w-[730px]' : 'max-w-[680px]'} p-6 sm:p-9 ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${wide ? 'max-w-[730px]' : 'max-w-[680px]'} p-6 sm:p-9 ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -513,33 +517,58 @@ export function TimeScheduleDialog({
 
 export interface WorkContractData {
   refNumber: string
+  // الطرف الأول: المستخدم (صاحب العمل)
   party1Org: string
+  party1Branch: string
   party1Seat: string
   party1Rep: string
   party1Role: string
+  // الطرف الثاني: العامل
   party2Name: string
   party2Birth: string
   party2Address: string
   party2Id: string
   party2Phone: string
+  party2Social: string
+  // المادة 01 — الفرع والمنصب
+  sportBranch: string
   jobTitle: string
   clause1: string
+  hasJobCard: boolean
+  // المادة 02 — سبب اللجوء
+  contractCause: string
+  // المادة 03 — المدة
   startAt: string
   endAt: string
-  clause3: string
-  clause5: string
-  placeText: string
-  signRole1: string
+  // المادة 04 — مكان العمل
+  facility: string
+  workBranch: string
+  // المادة 06 — الأجر والتعويضات
+  salaryAmount: string
+  salaryMethod: string
+  allowances: string
+  paymentPeriodicity: string
+  // المادة 14 + التوقيعات
+  placeDate: string
   signName1: string
-  signRole2: string
+  signRole1: string
   signName2: string
   visaName: string
   visaRole: string
+  // الملحق رقم 01 — بطاقة المنصب والمهام
+  annexResponsible: string
+  annexQualifications: string
+  annexDuties: string
+  annexSafety: string
+  annexHours: string
+  annexEquipment: string
+  annexDate: string
 }
 
 export const EMPTY_WORK_CONTRACT: WorkContractData = {
   refNumber: '',
   party1Org: 'الجمعية الرياضية الهاوية النادي الرياضي متعدد الرياضات الرائد لبلدية سعيدة',
+  party1Branch: '',
   party1Seat: 'طاب لحسن، بلدية سعيدة',
   party1Rep: '',
   party1Role: '',
@@ -548,25 +577,42 @@ export const EMPTY_WORK_CONTRACT: WorkContractData = {
   party2Address: 'سعيدة',
   party2Id: '',
   party2Phone: '',
+  party2Social: '',
+  sportBranch: '',
   jobTitle: '',
   clause1: '',
+  hasJobCard: true,
+  contractCause: '',
   startAt: '',
   endAt: '',
-  clause3: '',
-  clause5: 'يتقاضى الطرف الثاني أجرًا يُحسب على أساس الحجم الساعي كل شهر.',
-  placeText: '',
-  signRole1: '',
+  facility: '',
+  workBranch: '',
+  salaryAmount: '',
+  salaryMethod: 'شهري',
+  allowances: '',
+  paymentPeriodicity: 'شهرياً',
+  placeDate: '',
   signName1: '',
-  signRole2: '',
+  signRole1: '',
   signName2: '',
   visaName: 'حمادي عبد الرحمن',
   visaRole: 'رئيس الجمعية',
+  annexResponsible: '',
+  annexQualifications: '',
+  annexDuties: '',
+  annexSafety: '',
+  annexHours: '',
+  annexEquipment: '',
+  annexDate: '',
 }
 
 export function workContractFromParams(p: Record<string, string> | undefined): WorkContractData {
+  const flag = (v: unknown, def: boolean) =>
+    v === undefined || v === null || v === '' ? def : v === true || v === 'true'
   return {
     refNumber: p?.refNumber ?? '',
     party1Org: p?.party1Org ?? EMPTY_WORK_CONTRACT.party1Org,
+    party1Branch: p?.party1Branch ?? '',
     party1Seat: p?.party1Seat ?? EMPTY_WORK_CONTRACT.party1Seat,
     party1Rep: p?.party1Rep ?? '',
     party1Role: p?.party1Role ?? '',
@@ -575,125 +621,420 @@ export function workContractFromParams(p: Record<string, string> | undefined): W
     party2Address: p?.party2Address ?? '',
     party2Id: p?.party2Id ?? '',
     party2Phone: p?.party2Phone ?? '',
+    party2Social: p?.party2Social ?? '',
+    sportBranch: p?.sportBranch ?? '',
     jobTitle: p?.jobTitle ?? '',
     clause1: p?.clause1 ?? '',
+    hasJobCard: flag(p?.hasJobCard, true),
+    contractCause: p?.contractCause ?? '',
     startAt: p?.startAt ?? '',
     endAt: p?.endAt ?? '',
-    clause3: p?.clause3 ?? '',
-    clause5: p?.clause5 ?? EMPTY_WORK_CONTRACT.clause5,
-    placeText: p?.placeText ?? '',
-    signRole1: p?.signRole1 ?? '',
+    facility: p?.facility ?? '',
+    workBranch: p?.workBranch ?? '',
+    salaryAmount: p?.salaryAmount ?? '',
+    salaryMethod: p?.salaryMethod ?? EMPTY_WORK_CONTRACT.salaryMethod,
+    allowances: p?.allowances ?? '',
+    paymentPeriodicity: p?.paymentPeriodicity ?? EMPTY_WORK_CONTRACT.paymentPeriodicity,
+    placeDate: p?.placeDate ?? p?.placeText ?? '', // توافق مع الأرشيف القديم
     signName1: p?.signName1 ?? '',
-    signRole2: p?.signRole2 ?? '',
+    signRole1: p?.signRole1 ?? '',
     signName2: p?.signName2 ?? '',
     visaName: p?.visaName ?? EMPTY_WORK_CONTRACT.visaName,
     visaRole: p?.visaRole ?? EMPTY_WORK_CONTRACT.visaRole,
+    annexResponsible: p?.annexResponsible ?? '',
+    annexQualifications: p?.annexQualifications ?? '',
+    annexDuties: p?.annexDuties ?? '',
+    annexSafety: p?.annexSafety ?? '',
+    annexHours: p?.annexHours ?? '',
+    annexEquipment: p?.annexEquipment ?? '',
+    annexDate: p?.annexDate ?? '',
   }
 }
 
-/** يركّب نص المادة 01 من الوظيفة إن لم يُحرَّر يدوياً */
-function composeClause1(jobTitle: string): string {
-  return `يوظف الطرف الأول الطرف الثاني بصفة ${jobTitle.trim() || '................'}، قصد ضمان أمن وسلامة المنخرطين ومراقبة النشاطات والتدخل عند الضرورة، طبقًا للتشريع المعمول به.`
+/** اقتراحات المناصب بحسب الفرع الرياضي — العقد واحد لكل الفروع مع تغيير بطاقة المنصب والمهام */
+export const POSITION_SUGGESTIONS: Record<string, string[]> = {
+  'السباحة': ['حارس سباحة', 'مدرب سباحة', 'مساعد مدرب'],
+  'كرة القدم': ['مدرب', 'مساعد مدرب', 'مسؤول تجهيزات'],
+  'كرة اليد': ['مدرب', 'مساعد مدرب'],
+  'كرة السلة': ['مدرب', 'مساعد مدرب'],
+  'الكرة الطائرة': ['مدرب', 'مساعد مدرب'],
+  'ألعاب القوى': ['مدرب', 'مساعد فني'],
+  'الفنون القتالية': ['مدرب', 'مساعد مدرب'],
+  'الملاكمة': ['مدرب', 'مساعد مدرب'],
+  'الجمباز': ['مدرب', 'مساعد مدرب'],
+  'تنس الطاولة': ['مدرب'],
+  'الشطرنج': ['مدرب', 'مدرّب محكم'],
+  'الدراجات': ['مدرب', 'مساعد فني'],
 }
 
-function composeClause3(clause3: string): string {
+/** اقتراحات لأسباب اللجوء إلى العقد محدد المدة (للإرشاد — تُعدّل بحسب واقع كل عقد) */
+export const CAUSE_SUGGESTIONS: string[] = [
+  'نشاط موسمي مرتبط بالموسم الرياضي الجاري.',
+  'زيادة النشاط خلال التظاهرات والمنافسات الرياضية.',
+  'اللحاق بمنصب عامل غائب عنه بصفة مؤقتة.',
+  'عمل ذو طبيعة مؤقتة لا يتجاوز مدته مدة العقد.',
+]
+
+/** يركّب نص المادة 01 من الفرع والمنصب إن لم يُحرَّر يدوياً */
+function composeClause1(d: WorkContractData): string {
+  return `يوظف الطرف الأول الطرف الثاني للعمل ضمن فرع ${d.sportBranch.trim() || '................'}، بصفة ${d.jobTitle.trim() || '................'}، وذلك للقيام بالمهام المرتبطة بمنصبه، وفقًا للمؤهلات المطلوبة وطبيعة النشاط الرياضي، وتحت إشراف المسؤول المختص.`
+}
+
+/** عنوان مادة داخل العقد */
+function ContractArticle({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
   return (
-    clause3.trim() ||
-    'يمارس الطرف الثاني مهامه بالمنشأة الرياضية التي يكلف بها من طرف النادي في إطار نشاط فرعه.'
+    <div className="break-inside-avoid">
+      <h4 className="text-[13px] font-black" style={{ color: 'var(--doc-accent, #1d2f5e)' }}>
+        المادة {num}: {title}
+      </h4>
+      <div className="mt-0.5 space-y-1 text-[12.5px] font-medium leading-[1.85] text-neutral-800">{children}</div>
+    </div>
   )
 }
 
-function contractBody(d: WorkContractData): string {
-  const clause2 = `يبرم هذا العقد لمدة محددة ابتداءً من: ${d.startAt.trim() || '..........'} إلى غاية: ${d.endAt.trim() || '..........'} وينتهي العقد بانتهاء مدته، ما لم يتم تجديده كتابيًا.`
-  return [
-    'المادة 01: موضوع العقد',
-    d.clause1.trim() || composeClause1(d.jobTitle),
-    'المادة 02: مدة العقد',
-    clause2,
-    'المادة 03: مكان العمل',
-    composeClause3(d.clause3),
-    'المادة 04: أوقات العمل',
-    'يلتزم الطرف الثاني باحترام جدول العمل الذي تحدده إدارة الفرع المعني.\n• الحضور قبل بداية العمل بـ 15 دقيقة.\n• يمنع مغادرة المنصب دون ترخيص.',
-    'المادة 05: الأجر',
-    d.clause5.trim() || EMPTY_WORK_CONTRACT.clause5,
-    'المادة 06: مهام المنصب',
-    'يلتزم الطرف الثاني بما يأتي:\n• مراقبة جميع المنخرطين دون انقطاع.\n• التدخل الفوري في حالات الخطر.\n• تقديم الإسعافات الأولية.\n• الاتصال بالحماية المدنية عند الضرورة.\n• التأكد يوميًا من جاهزية المعدات.\n• الإبلاغ عن أي خطر أو عطب داخل المنشأة.\n• السهر على احترام النظام الداخلي.\n• تحرير تقرير كتابي عن كل حادث.',
-    'المادة 07: الالتزامات المهنية',
-    'يلتزم الطرف الثاني بما يلي:\n• ارتداء الزي الرسمي والشارة المهنية.\n• المحافظة على ممتلكات النادي.\n• احترام السر المهني.\n• حسن معاملة المنخرطين وأوليائهم.\n• عدم استعمال الهاتف أثناء أداء المهام.\n• عدم التدخين أو تناول أي مادة تؤثر على اليقظة أثناء العمل.\n• المحافظة على نظافة مكان العمل.',
-    'المادة 08: الغياب والعطل',
-    'يجب على الطرف الثاني إبلاغ رئيس الفرع بأي غياب مسبقًا، مع تقديم مبرر قانوني عند الاقتضاء.',
-    'المادة 09: إنهاء العقد',
-    'يمكن إنهاء هذا العقد قبل انتهاء مدته في الحالات التالية:\n• الإهمال الجسيم.\n• الغياب غير المبرر.\n• مخالفة تعليمات السلامة.\n• سوء السلوك المهني.\n• تعريض حياة المنخرطين للخطر.\n• فقدان المؤهلات القانونية اللازمة لممارسة المهام.\nويتم ذلك وفقًا لأحكام قانون العمل الجزائري.',
-    'المادة 10: أحكام عامة',
-    'يخضع هذا العقد لأحكام التشريع والتنظيم المعمول بهما في الجمهورية الجزائرية الديمقراطية الشعبية، وللنظام الداخلي للجمعية.',
-  ].join('\n\n')
+function ContractOl({ items }: { items: string[] }) {
+  return (
+    <ol className="list-decimal space-y-0.5 pr-5 marker:font-black">
+      {items.map((t, i) => (
+        <li key={i}>{t}</li>
+      ))}
+    </ol>
+  )
+}
+
+function ContractUl({ items }: { items: string[] }) {
+  return (
+    <ul className="list-disc space-y-0.5 pr-5">
+      {items.map((t, i) => (
+        <li key={i}>{t}</li>
+      ))}
+    </ul>
+  )
+}
+
+/** حقل منقط ضمن سطر نصي — قيمة معبأة أو خط للتعبئة اليدوية */
+function DottedInline({ value }: { value: string }) {
+  return value.trim() ? (
+    <span className="border-b border-dotted border-neutral-500 px-2 font-black">{value}</span>
+  ) : (
+    <span className="inline-block w-32 border-b border-dotted border-neutral-400">&nbsp;</span>
+  )
+}
+
+/** حقل الملحق — سطر معبأ أو مساحة منقطة للتعبئة اليدوية */
+function AnnexField({ label, value, tall = false }: { label: string; value: string; tall?: boolean }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="shrink-0 text-[13.5px] font-bold">{label}:</span>
+      {value.trim() ? (
+        <span className="flex-1 whitespace-pre-wrap border-b border-dotted border-neutral-500 px-2 text-right text-[13px] font-bold leading-7">
+          {value}
+        </span>
+      ) : (
+        <span className="flex-1 border-b border-dotted border-neutral-400" style={{ height: tall ? 56 : 30 }}>
+          &nbsp;
+        </span>
+      )}
+    </div>
+  )
 }
 
 export function WorkContractPaper({ data, printable = true }: { data: WorkContractData; printable?: boolean }) {
   const d = data
-  return (
-    <PaperShell printable={printable} wide>
-      <ClubLetterhead compact />
-      <div className="mt-3 text-center">
-        <h3 className="text-[19px] font-black">عقد عمل محدد المدة (CDD)</h3>
-        <p className="mt-1 text-[12px] font-bold text-neutral-600">
-          رقم: <span className="font-mono" dir="ltr">{d.refNumber || '......... / ن.ر.ر.س. ' + new Date().getFullYear()}</span>
-        </p>
-      </div>
+  const clause1 = d.clause1.trim() || composeClause1(d)
+  const cause = d.contractCause.trim()
+  const workBranch = d.workBranch.trim() || d.sportBranch.trim()
 
-      <div className="mt-4 rounded-lg border border-neutral-400/60 bg-neutral-50/60 px-3 py-2 text-center text-[13px] font-black">
-        بين الموقعين أدناه:
-      </div>
-
-      <div className="mt-4 space-y-2 text-[13px] leading-[1.9]">
-        <p className="font-black underline decoration-2 underline-offset-4">الطرف الأول (صاحب العمل):</p>
-        <p className="font-medium">{d.party1Org || '..................'}</p>
-        <p className="font-medium">
-          الكائن مقره بـ: {d.party1Seat || '..................'}، ويمثلها في هذا العقد السيد:{' '}
-          <span className="font-black">{d.party1Rep || '..................'}</span> بصفته{' '}
-          <span className="font-black">{d.party1Role || '..................'}</span>. ويشار إليه في هذا العقد بـ &quot;الطرف الأول&quot;.
-        </p>
-        <p className="font-black underline decoration-2 underline-offset-4">الطرف الثاني (العامل):</p>
-        <p className="font-medium">
-          الاسم واللقب: <span className="font-black">{d.party2Name || '..................'}</span> — تاريخ ومكان الميلاد:{' '}
-          <span dir="ltr" className="font-bold">{d.party2Birth || '..................'}</span> — العنوان: {d.party2Address || '..................'}
-        </p>
-        <p className="font-medium">
-          رقم بطاقة التعريف الوطنية: <span dir="ltr" className="font-mono font-bold">{d.party2Id || '..................'}</span> — رقم الهاتف:{' '}
-          <span dir="ltr" className="font-mono font-bold">{d.party2Phone || '..................'}</span> — ويشار إليه في هذا العقد بـ &quot;الطرف الثاني&quot;.
-        </p>
-      </div>
-
-      <div className="mt-4 whitespace-pre-wrap text-[12.5px] font-medium leading-[1.95] text-neutral-800">
-        {contractBody(d)}
-      </div>
-
-      <p className="mt-4 text-[12.5px] font-black">
-        حرر بمدينة سعيدة في: <span dir="ltr">{d.placeText || '..........'}</span> — وحُرر هذا العقد من نسختين أصليتين، تسلم نسخة لكل طرف للعمل بموجبها.
-      </p>
-
-      {/* التوقيعات */}
-      <div className="mt-6 grid grid-cols-2 gap-3 text-[11.5px] font-black">
-        <div className="rounded-lg border border-neutral-400/60 p-3 text-center">
-          <div className="font-black underline">{d.signRole1 || 'الطرف الأول'}</div>
-          <div className="mt-1 text-[10.5px] font-bold text-neutral-500">{d.signName1}</div>
-          <div className="mt-10 text-[10px] font-bold text-neutral-500">الإمضاء والختم</div>
+  // الورقتان متتاليتان في التدفق (العقد ثم الملحق) — حاوية الطباعة واحدة
+  // حتى لا تتراكب الورقتان عند الطباعة (doc-print-area تثبّت أعلى الورقة)
+  const sheets = (
+    <>
+      {/* الصفحة الأولى: العقد بالمواد الأربعة عشرة */}
+      <PaperShell printable={false} wide flow>
+        <ClubLetterhead compact />
+        <div className="mt-2 text-center">
+          <p className="text-[11.5px] font-black text-neutral-700">الجمهورية الجزائرية الديمقراطية الشعبية</p>
+          <h3 className="mt-1 text-[19px] font-black">عقد عمل محدد المدة (CDD)</h3>
+          <p className="mt-1 text-[12px] font-bold text-neutral-600">
+            رقم: <span className="font-mono" dir="ltr">{d.refNumber || `.......... / ن.ر.ر.س / ${new Date().getFullYear()}`}</span>
+          </p>
         </div>
-        <div className="rounded-lg border border-neutral-400/60 p-3 text-center">
-          <div className="font-black underline">{d.signRole2 || 'الطرف الثاني'}</div>
-          <div className="mt-1 text-[10.5px] font-bold text-neutral-500">{d.signName2}</div>
-          <div className="mt-10 text-[10px] font-bold text-neutral-500">الإمضاء</div>
+
+        <div className="mt-3 rounded-lg border border-neutral-400/60 bg-neutral-50/60 px-3 py-2 text-center text-[13px] font-black">
+          بين الموقعين أدناه:
         </div>
-        <div className="col-span-2 rounded-lg border border-neutral-400/60 bg-neutral-50/60 p-3 text-center">
-          <div className="font-black underline">تأشيرة رئيس الجمعية الرياضية الهاوية</div>
-          <div className="mt-1 text-[10.5px] font-bold text-neutral-600">
-            الاسم واللقب: {d.visaName || '..................'} — الصفة: {d.visaRole || '..................'}
+
+        <div className="mt-3 space-y-2.5 text-[13px] leading-[2.05]">
+          <p className="font-black underline decoration-2 underline-offset-4">الطرف الأول: المستخدم (صاحب العمل)</p>
+          <p>
+            {d.party1Org}، فرع: <DottedInline value={d.party1Branch} />، الكائن مقرها بـ{' '}
+            <DottedInline value={d.party1Seat} />، ويمثلها في هذا العقد السيد: <DottedInline value={d.party1Rep} />، بصفته{' '}
+            <DottedInline value={d.party1Role} />، ويشار إليه في هذا العقد بـ «الطرف الأول».
+          </p>
+          <p className="font-black underline decoration-2 underline-offset-4">الطرف الثاني: العامل</p>
+          <div className="space-y-1 pr-1">
+            <FieldLine label="الاسم واللقب" value={d.party2Name} strong />
+            <FieldLine label="تاريخ ومكان الميلاد" value={d.party2Birth} />
+            <FieldLine label="العنوان" value={d.party2Address} />
+            <FieldLine label="رقم بطاقة التعريف الوطنية" value={d.party2Id} />
+            <FieldLine label="رقم الهاتف" value={d.party2Phone} />
+            <FieldLine label="رقم الضمان الاجتماعي، عند الاقتضاء" value={d.party2Social} />
           </div>
-          <div className="mt-6 text-[10px] font-bold text-neutral-500">الإمضاء والختم</div>
+          <p>ويشار إليه في هذا العقد بـ «الطرف الثاني».</p>
+          <p className="rounded-md bg-neutral-100/70 px-3 py-1.5 text-[12.5px] font-bold">
+            وبعد الاتفاق بين الطرفين، تم إبرام هذا العقد وفقًا للأحكام التشريعية والتنظيمية المعمول بها في الجمهورية
+            الجزائرية الديمقراطية الشعبية، مع مراعاة الشروط الآتية:
+          </p>
         </div>
-      </div>
-    </PaperShell>
+
+        <div className="mt-4 space-y-3.5">
+          <ContractArticle num="01" title="موضوع العقد والمنصب">
+            <p className="whitespace-pre-wrap">{clause1}</p>
+            {d.hasJobCard && <p>ويحدد المنصب والمهام الخاصة به في بطاقة وصف وظيفي ملحقة بهذا العقد، عند الاقتضاء.</p>}
+          </ContractArticle>
+
+          <ContractArticle num="02" title="سبب اللجوء إلى العقد محدد المدة">
+            <p>أُبرم هذا العقد لمدة محددة بسبب:</p>
+            {cause ? (
+              <p className="whitespace-pre-wrap border-b border-dotted border-neutral-500 px-2 font-bold leading-8">
+                {cause}
+              </p>
+            ) : (
+              <div className="space-y-5 py-1.5">
+                <div className="border-b border-dotted border-neutral-400" />
+                <div className="border-b border-dotted border-neutral-400" />
+              </div>
+            )}
+            <p>
+              ويجب أن يكون السبب حقيقيًا ومحددًا ومتوافقًا مع الحالات والشروط التي يسمح فيها التشريع الجزائري بإبرام عقد عمل
+              محدد المدة.
+            </p>
+          </ContractArticle>
+
+          <ContractArticle num="03" title="مدة العقد">
+            <p>
+              تبدأ مدة هذا العقد بتاريخ:{' '}
+              <span dir="ltr" className="font-black">{d.startAt || '....../....../..........'}</span>
+            </p>
+            <p>
+              وتنتهي بتاريخ:{' '}
+              <span dir="ltr" className="font-black">{d.endAt || '....../....../..........'}</span>
+            </p>
+            <p>ويخضع تجديد العقد، عند الاقتضاء، للشروط والإجراءات القانونية المعمول بها، ولا يُفترض التجديد تلقائيًا.</p>
+          </ContractArticle>
+
+          <ContractArticle num="04" title="مكان العمل">
+            <p>يمارس الطرف الثاني مهامه في:</p>
+            <ContractUl
+              items={[
+                `المنشأة أو المرفق الرياضي: ${d.facility.trim() || '..................'}`,
+                'البلدية: سعيدة.',
+                `الفرع الرياضي: ${workBranch || '..................'}`,
+              ]}
+            />
+            <p>
+              ويجوز تكليفه بالعمل في منشأة رياضية أخرى تابعة للنادي، عند الضرورة ووفقًا لطبيعة المنصب وأحكام التشريع المعمول
+              به.
+            </p>
+          </ContractArticle>
+
+          <ContractArticle num="05" title="أوقات العمل والحجم الساعي">
+            <p>يحدد الحجم الساعي وجدول العمل وفقًا لطبيعة النشاط والمنصب، مع احترام أحكام التشريع والتنظيم المعمول بهما.</p>
+            <p>ويلتزم الطرف الثاني بما يأتي:</p>
+            <ContractOl
+              items={[
+                'احترام جدول العمل المحدد من طرف الإدارة.',
+                'الالتزام بمواعيد الحضور والانصراف.',
+                'عدم مغادرة مكان العمل أثناء ساعات العمل دون ترخيص، إلا في الحالات التي تستدعي التدخل الفوري لحماية الأشخاص أو الممتلكات.',
+                'إثبات الحضور وفق الوسيلة المعتمدة لدى النادي.',
+              ]}
+            />
+            <p>ويحدد جدول العمل في وثيقة ملحقة عند الحاجة.</p>
+          </ContractArticle>
+
+          <ContractArticle num="06" title="الأجر والتعويضات">
+            <p>يتقاضى الطرف الثاني أجرًا قدره:</p>
+            <ContractUl
+              items={[
+                `الأجر الأساسي الإجمالي: ${d.salaryAmount.trim() || '................'} دج.`,
+                `طريقة احتساب الأجر: ${d.salaryMethod.trim() || 'حسب النظام القانوني المطبق'}.`,
+                `التعويضات المستحقة، إن وجدت: ${d.allowances.trim() ? `${d.allowances.trim()} دج` : 'لا توجد'}.`,
+                `دورية الدفع: ${d.paymentPeriodicity.trim() || '..................'}.`,
+              ]}
+            />
+            <p>
+              تحدد الاقتطاعات القانونية والاشتراكات الاجتماعية وفقًا للتشريع المعمول به، ويُسلَّم للعامل ما يثبت دفع أجره وفق
+              الإجراءات المعتمدة.
+            </p>
+            <p>ولا يجوز أن يقل الأجر عن الحدود القانونية الواجبة التطبيق.</p>
+          </ContractArticle>
+
+          <ContractArticle num="07" title="المهام والالتزامات المهنية">
+            <p>يلتزم الطرف الثاني بما يأتي:</p>
+            <ContractOl
+              items={[
+                'أداء المهام المسندة إليه بجدية وأمانة.',
+                'احترام التعليمات المهنية والتنظيمية المشروعة.',
+                'المحافظة على ممتلكات النادي وتجهيزاته.',
+                'احترام المسؤولين والزملاء والمنخرطين وأوليائهم.',
+                'المحافظة على السر المهني والبيانات الشخصية التي يطلع عليها بحكم عمله.',
+                'الإبلاغ عن الحوادث والأعطال والمخاطر المتعلقة بالعمل.',
+                'احترام قواعد الصحة والسلامة والوقاية.',
+                'المحافظة على نظافة وترتيب مكان العمل.',
+                'عدم استعمال تجهيزات النادي لأغراض شخصية دون ترخيص.',
+                'تقديم التقارير المتعلقة بالمهام عند طلبها وفق الإجراءات المعتمدة.',
+              ]}
+            />
+            <p>وتحدد الالتزامات الفنية الخاصة بكل منصب في الملحق الوظيفي المرفق بالعقد.</p>
+          </ContractArticle>
+
+          <ContractArticle num="08" title="المؤهلات المهنية والسلامة">
+            <p>
+              يلتزم الطرف الثاني بتقديم الشهادات والمؤهلات المهنية المطلوبة قانونًا لممارسة منصبه، والمحافظة على صلاحيتها طوال
+              مدة العقد متى كانت صلاحيتها شرطًا لممارسة المهنة.
+            </p>
+            <p>كما يلتزم باحترام إجراءات السلامة والوقاية الخاصة بالنشاط الرياضي الذي يعمل فيه.</p>
+            <p>
+              ويتحمل الطرف الأول مسؤولياته القانونية المتعلقة بظروف العمل والوقاية والسلامة والتجهيزات اللازمة، وفقًا للتشريع
+              المعمول به.
+            </p>
+          </ContractArticle>
+
+          <ContractArticle num="09" title="الغياب والعطل">
+            <p>
+              يلتزم الطرف الثاني بإبلاغ المسؤول المباشر عن أي غياب أو تأخر في أقرب وقت ممكن، مع تقديم المبررات والوثائق
+              المطلوبة وفقًا للإجراءات القانونية المعمول بها.
+            </p>
+            <p>وتحدد العطل والراحة الأسبوعية والعطل المرضية وغيرها من الحقوق وفقًا للتشريع والتنظيم المعمول بهما.</p>
+          </ContractArticle>
+
+          <ContractArticle num="10" title="الانضباط المهني">
+            <p>
+              يلتزم الطرف الثاني بالنظام الداخلي للنادي، بعد اطلاعه عليه، وبالتعليمات المهنية المشروعة الصادرة عن المسؤولين
+              المختصين.
+            </p>
+            <p>
+              وفي حالة ارتكاب مخالفة مهنية، تتخذ الإجراءات المناسبة وفقًا للتشريع المعمول به، مع احترام حقوق العامل وضماناته
+              القانونية.
+            </p>
+          </ContractArticle>
+
+          <ContractArticle num="11" title="إنهاء العقد">
+            <p>ينتهي عقد العمل محدد المدة عند حلول أجله، وفقًا للأحكام القانونية المعمول بها.</p>
+            <p>
+              أما إنهاء العقد قبل انتهاء مدته، أو فسخه، أو إنهاؤه باتفاق الطرفين، فيخضع للحالات والشروط والإجراءات التي يجيزها
+              التشريع الجزائري.
+            </p>
+            <p>
+              ولا يُعتبر مجرد وصف التصرف بأنه إهمال جسيم أو غياب غير مبرر أو سوء سلوك مهني سببًا كافيًا لتجاوز الشروط
+              والإجراءات القانونية الواجبة التطبيق.
+            </p>
+            <p>وتُسوّى الحقوق المالية والاجتماعية المستحقة عند انتهاء علاقة العمل وفقًا للقانون.</p>
+          </ContractArticle>
+
+          <ContractArticle num="12" title="الضمان الاجتماعي والتصريح بالعمل">
+            <p>
+              يلتزم الطرف الأول باستيفاء إجراءات التصريح بالعامل لدى هيئات الضمان الاجتماعي المختصة، والوفاء بالالتزامات
+              القانونية والاجتماعية المترتبة على علاقة العمل، متى كانت واجبة التطبيق.
+            </p>
+            <p>ويلتزم الطرف الثاني بتقديم الوثائق اللازمة لإتمام الإجراءات الإدارية والقانونية.</p>
+          </ContractArticle>
+
+          <ContractArticle num="13" title="أحكام عامة">
+            <p>
+              يخضع هذا العقد للتشريع والتنظيم المعمول بهما في الجمهورية الجزائرية الديمقراطية الشعبية، وللنظام الداخلي للنادي
+              في حدود مطابقته للقانون.
+            </p>
+            <p>وتعتبر الملاحق الموقعة من الطرفين، عند وجودها، جزءًا من هذا العقد.</p>
+            <p>وفي حالة وجود خلاف بشأن تفسير العقد أو تنفيذه، تتم تسويته وفقًا للإجراءات القانونية المختصة.</p>
+          </ContractArticle>
+
+          <ContractArticle num="14" title="تحرير العقد والتوقيع">
+            <p>
+              حرر هذا العقد بمدينة سعيدة بتاريخ:{' '}
+              <span dir="ltr" className="font-black">{d.placeDate || '....../....../..........'}</span>
+            </p>
+            <p>في نسختين أصليتين، تسلم نسخة لكل طرف للعمل بموجبها.</p>
+          </ContractArticle>
+        </div>
+
+        {/* التوقيعات */}
+        <div className="mt-5 grid grid-cols-2 gap-3 text-[11.5px] font-black">
+          <div className="rounded-lg border border-neutral-400/60 p-3 text-center">
+            <div className="font-black underline">الطرف الأول: المستخدم</div>
+            <div className="mt-1 text-[10.5px] font-bold text-neutral-500">
+              الاسم واللقب: {d.signName1 || '..................'}
+            </div>
+            <div className="text-[10.5px] font-bold text-neutral-500">الصفة: {d.signRole1 || '..................'}</div>
+            <div className="mt-9 text-[10px] font-bold text-neutral-500">الإمضاء والختم</div>
+          </div>
+          <div className="rounded-lg border border-neutral-400/60 p-3 text-center">
+            <div className="font-black underline">الطرف الثاني: العامل</div>
+            <div className="mt-1 text-[10.5px] font-bold text-neutral-500">
+              الاسم واللقب: {d.signName2 || d.party2Name || '..................'}
+            </div>
+            <div className="mt-9 text-[10px] font-bold text-neutral-500">الإمضاء</div>
+          </div>
+          <div className="col-span-2 rounded-lg border border-neutral-400/60 bg-neutral-50/60 p-3 text-center">
+            <div className="font-black underline">تأشيرة رئيس الجمعية الرياضية الهاوية، عند الاقتضاء</div>
+            <div className="mt-1 text-[10.5px] font-bold text-neutral-600">
+              الاسم واللقب: {d.visaName || '..................'} — الصفة: {d.visaRole || '..................'}
+            </div>
+            <div className="mt-6 text-[10px] font-bold text-neutral-500">الإمضاء والختم</div>
+          </div>
+        </div>
+      </PaperShell>
+
+      {/* فاصل صفحة: الملحق رقم 01 في ورقة مستقلة */}
+      <div className="doc-page-break h-4" />
+
+      {/* الصفحة الثانية: الملحق رقم 01 — بطاقة المنصب والمهام */}
+      <PaperShell printable={false} wide>
+        <ClubLetterhead compact />
+        <div className="mt-2 text-center">
+          <h3 className="text-[17px] font-black">الملحق رقم 01</h3>
+          <p className="text-[14px] font-black" style={{ color: 'var(--doc-accent, #1d2f5e)' }}>
+            بطاقة المنصب والمهام
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-neutral-600">
+            ملحق لعقد العمل محدد المدة (CDD) رقم:{' '}
+            <span className="font-mono" dir="ltr">{d.refNumber || '..........'}</span>
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          <AnnexField label="الفرع الرياضي" value={d.sportBranch} />
+          <AnnexField label="المسمى الوظيفي" value={d.jobTitle} />
+          <AnnexField label="مكان العمل" value={d.facility} />
+          <AnnexField label="المسؤول المباشر" value={d.annexResponsible} />
+          <AnnexField label="المؤهلات والشهادات المطلوبة" value={d.annexQualifications} tall />
+          <AnnexField label="المهام الأساسية" value={d.annexDuties} tall />
+          <AnnexField label="المهام الخاصة بالسلامة" value={d.annexSafety} tall />
+          <AnnexField label="الحجم الساعي وجدول العمل" value={d.annexHours} tall />
+          <AnnexField label="التجهيزات والوسائل اللازمة" value={d.annexEquipment} tall />
+        </div>
+
+        <p className="mt-4 text-[12.5px] font-black">
+          تاريخ إرفاق الملحق: <span dir="ltr">{d.annexDate || '....../....../..........'}</span>
+        </p>
+
+        <div className="mt-8 grid grid-cols-2 gap-3 text-center text-[11.5px] font-black">
+          <div>
+            <div>إمضاء الطرف الأول</div>
+            <div className="mx-auto mt-14 w-32 border-t border-dashed border-neutral-400" />
+          </div>
+          <div>
+            <div>إمضاء الطرف الثاني</div>
+            <div className="mx-auto mt-14 w-32 border-t border-dashed border-neutral-400" />
+          </div>
+        </div>
+      </PaperShell>
+    </>
   )
+
+  // للطباعة: حاوية doc-print-area واحدة تضم الورقتين (تتدفقتان وينقسان معاً عبر الصفحات)
+  if (printable) return <div className="doc-print-area">{sheets}</div>
+  return sheets
 }
 
 export function WorkContractDialog({
@@ -701,11 +1042,13 @@ export function WorkContractDialog({
   onClose,
   onSaved,
   onOpenLetterhead,
+  branches = [],
 }: {
   open: boolean
   onClose: () => void
   onSaved?: () => void
   onOpenLetterhead?: () => void
+  branches?: BranchWithAccount[]
 }) {
   const [d, setD] = useState<WorkContractData>({ ...EMPTY_WORK_CONTRACT })
   const [seed, setSeed] = useState('')
@@ -713,16 +1056,26 @@ export function WorkContractDialog({
 
   if (open && !seed) {
     setSeed('open')
-    const y = new Date().getFullYear()
+    const today = formatDateDMY(new Date())
     setD({
       ...EMPTY_WORK_CONTRACT,
-      refNumber: `.... / ن.ر.ر.س. ${y}`,
-      placeText: formatDateDMY(new Date()),
+      refNumber: `.......... / ن.ر.ر.س / ${new Date().getFullYear()}`,
+      placeDate: today,
+      annexDate: today,
     })
   }
   if (!open && seed) setSeed('')
 
   const set = (k: keyof WorkContractData) => (v: string) => setD((prev) => ({ ...prev, [k]: v }))
+
+  /** اختيار الفرع: يملأ فرع الطرف الأول وفرعي المادتين 01 و04 تلقائياً ما كانت فارغة */
+  const setSportBranch = (v: string) =>
+    setD((prev) => ({
+      ...prev,
+      sportBranch: v,
+      party1Branch: prev.party1Branch.trim() || v,
+      workBranch: prev.workBranch.trim() || v,
+    }))
 
   const saveArchive = () =>
     archive({
@@ -730,10 +1083,13 @@ export function WorkContractDialog({
       title: `عقد عمل — ${d.party2Name || 'غير معبأ'} (${d.jobTitle || '—'})`,
       type: 'file',
       category: 'عقود العمل',
-      content: `عقد عمل محدد المدة (CDD) بين النادي والسيد ${d.party2Name || '—'} بصفة ${d.jobTitle || '—'}، من ${d.startAt || '—'} إلى ${d.endAt || '—'}.`,
+      content: `عقد عمل محدد المدة (CDD) بين النادي (فرع ${d.party1Branch || d.sportBranch || '—'}) والسيد ${d.party2Name || '—'} بصفة ${d.jobTitle || '—'}، من ${d.startAt || '—'} إلى ${d.endAt || '—'}.`,
       systemForm: 'work-contract',
-      params: { ...d },
+      params: { ...d, hasJobCard: d.hasJobCard ? 'true' : 'false' },
     })
+
+  const positions = POSITION_SUGGESTIONS[d.sportBranch.trim()]
+  const branchSelectClass = 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs'
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -744,7 +1100,8 @@ export function WorkContractDialog({
             عقد عمل محدد المدة (CDD)
           </DialogTitle>
           <DialogDescription>
-            عقد بالمواد العشر كما في النموذج الرسمي — عدّل بيانات الطرفين والمواد المتغيرة ثم اطبع.
+            النموذج الرسمي الكامل: 14 مادة + الملحق رقم 01 (بطاقة المنصب والمهام) في صفحة مستقلة — عقد واحد لكل الفروع:
+            غيّر الفرع والمنصب والمهام فقط، ثم اطبع أو أرشف.
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
@@ -754,15 +1111,30 @@ export function WorkContractDialog({
               <Label>رقم العقد</Label>
               <Input value={d.refNumber} onChange={(e) => set('refNumber')(e.target.value)} dir="ltr" className="text-right" />
             </div>
-            <EditorGroup title="الطرف الأول (صاحب العمل)">
-              <Input value={d.party1Org} onChange={(e) => set('party1Org')(e.target.value)} placeholder="اسم الجهة" />
+
+            <EditorGroup title="الطرف الأول — المستخدم (صاحب العمل)">
+              <Input value={d.party1Org} onChange={(e) => set('party1Org')(e.target.value)} placeholder="اسم الجهة المستخدمة" />
+              {branches.length > 0 && (
+                <select
+                  value={d.party1Branch}
+                  onChange={(e) => setSportBranch(e.target.value)}
+                  className={branchSelectClass}
+                  aria-label="الفرع المعني بالعقد"
+                >
+                  <option value="">الفرع المعني بالعقد…</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.name}>{b.name}</option>
+                  ))}
+                </select>
+              )}
               <Input value={d.party1Seat} onChange={(e) => set('party1Seat')(e.target.value)} placeholder="المقر" />
               <div className="grid grid-cols-2 gap-2">
                 <Input value={d.party1Rep} onChange={(e) => set('party1Rep')(e.target.value)} placeholder="اسم الممثل" />
                 <Input value={d.party1Role} onChange={(e) => set('party1Role')(e.target.value)} placeholder="صفته" />
               </div>
             </EditorGroup>
-            <EditorGroup title="الطرف الثاني (العامل)">
+
+            <EditorGroup title="الطرف الثاني — العامل">
               <Input value={d.party2Name} onChange={(e) => set('party2Name')(e.target.value)} placeholder="الاسم واللقب" />
               <Input value={d.party2Birth} onChange={(e) => set('party2Birth')(e.target.value)} placeholder="تاريخ ومكان الميلاد — 24/06/1995" />
               <Input value={d.party2Address} onChange={(e) => set('party2Address')(e.target.value)} placeholder="العنوان" />
@@ -770,37 +1142,117 @@ export function WorkContractDialog({
                 <Input value={d.party2Id} onChange={(e) => set('party2Id')(e.target.value)} placeholder="رقم بط.ت.و" dir="ltr" className="text-right" />
                 <Input value={d.party2Phone} onChange={(e) => set('party2Phone')(e.target.value)} placeholder="رقم الهاتف" dir="ltr" className="text-right" />
               </div>
+              <Input value={d.party2Social} onChange={(e) => set('party2Social')(e.target.value)} placeholder="رقم الضمان الاجتماعي (عند الاقتضاء)" dir="ltr" className="text-right" />
             </EditorGroup>
-            <EditorGroup title="المادة 01 — الموضوع والوظيفة">
-              <Input value={d.jobTitle} onChange={(e) => set('jobTitle')(e.target.value)} placeholder="الوظيفة — مثال: حارس سباحة (منقذ مائي)" />
-              <Textarea value={d.clause1} onChange={(e) => set('clause1')(e.target.value)} rows={3} placeholder="نص المادة 01 (فارغ = يُركّب تلقائياً من الوظيفة)" />
+
+            <EditorGroup title="المادة 01 — الفرع والمنصب">
+              {branches.length > 0 && (
+                <select
+                  value={d.sportBranch}
+                  onChange={(e) => setSportBranch(e.target.value)}
+                  className={branchSelectClass}
+                  aria-label="الفرع الرياضي"
+                >
+                  <option value="">الفرع الرياضي…</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.name}>{b.name}</option>
+                  ))}
+                </select>
+              )}
+              <Input value={d.jobTitle} onChange={(e) => set('jobTitle')(e.target.value)} placeholder="المنصب — مثال: مدرب سباحة" />
+              {positions && (
+                <div className="flex flex-wrap gap-1.5">
+                  {positions.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => set('jobTitle')(p)}
+                      className="rounded-full border border-(--border) bg-muted/50 px-2.5 py-0.5 text-[10.5px] font-bold text-muted-foreground transition-colors hover:border-(--club)/50 hover:text-(--club)"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between rounded-xl border border-(--border) bg-muted/40 p-2.5">
+                <Label className="text-xs font-bold">بطاقة وصف وظيفي ملحقة</Label>
+                <Switch checked={d.hasJobCard} onCheckedChange={(v) => setD((prev) => ({ ...prev, hasJobCard: v }))} />
+              </div>
+              <Textarea value={d.clause1} onChange={(e) => set('clause1')(e.target.value)} rows={3} placeholder="نص المادة 01 (فارغ = يُركّب تلقائياً من الفرع والمنصب)" />
             </EditorGroup>
-            <EditorGroup title="المادة 02 — المدة">
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={d.startAt} onChange={(e) => set('startAt')(e.target.value)} placeholder="ابتداءً من" />
-                <Input value={d.endAt} onChange={(e) => set('endAt')(e.target.value)} placeholder="إلى غاية" />
+
+            <EditorGroup title="المادة 02 — سبب اللجوء إلى العقد محدد المدة">
+              <Textarea value={d.contractCause} onChange={(e) => set('contractCause')(e.target.value)} rows={2} placeholder="سبب حقيقي ومحدد وفق قانون العمل الجزائري 90-11" />
+              <div className="flex flex-wrap gap-1.5">
+                {CAUSE_SUGGESTIONS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => set('contractCause')(c)}
+                    title="انقر للإدراج — عدّله بحسب واقع العقد"
+                    className="rounded-full border border-(--border) bg-muted/50 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground transition-colors hover:border-(--club)/50 hover:text-(--club)"
+                  >
+                    {c}
+                  </button>
+                ))}
               </div>
             </EditorGroup>
-            <EditorGroup title="المادة 03 — مكان العمل">
-              <Textarea value={d.clause3} onChange={(e) => set('clause3')(e.target.value)} rows={2} placeholder="فارغ = نص افتراضي عام" />
-            </EditorGroup>
-            <EditorGroup title="المادة 05 — الأجر">
-              <Textarea value={d.clause5} onChange={(e) => set('clause5')(e.target.value)} rows={2} />
-            </EditorGroup>
-            <EditorGroup title="التحرير والتوقيع">
+
+            <EditorGroup title="المادة 03 — مدة العقد">
               <div className="grid grid-cols-2 gap-2">
-                <Input value={d.placeText} onChange={(e) => set('placeText')(e.target.value)} placeholder="تاريخ التحرير" />
-                <Input value={d.signRole1} onChange={(e) => set('signRole1')(e.target.value)} placeholder="صفة الطرف الأول" />
+                <Input value={d.startAt} onChange={(e) => set('startAt')(e.target.value)} placeholder="تبدأ بتاريخ" />
+                <Input value={d.endAt} onChange={(e) => set('endAt')(e.target.value)} placeholder="وتنتهي بتاريخ" />
               </div>
+            </EditorGroup>
+
+            <EditorGroup title="المادة 04 — مكان العمل">
+              <Input value={d.facility} onChange={(e) => set('facility')(e.target.value)} placeholder="المنشأة أو المرفق الرياضي — مثال: ملعب الإخوة براسي" />
+              <Input value={d.workBranch} onChange={(e) => set('workBranch')(e.target.value)} placeholder="الفرع الرياضي (يُملأ تلقائياً)" />
+            </EditorGroup>
+
+            <EditorGroup title="المادة 06 — الأجر والتعويضات">
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={d.salaryAmount} onChange={(e) => set('salaryAmount')(e.target.value)} placeholder="الأجر الأساسي (دج)" dir="ltr" className="text-right" />
+                <select
+                  value={d.salaryMethod}
+                  onChange={(e) => set('salaryMethod')(e.target.value)}
+                  className={branchSelectClass}
+                  aria-label="طريقة احتساب الأجر"
+                >
+                  <option value="شهري">شهري</option>
+                  <option value="بالساعة">بالساعة</option>
+                  <option value="حسب النظام القانوني المطبق">حسب النظام القانوني المطبق</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={d.allowances} onChange={(e) => set('allowances')(e.target.value)} placeholder="تعويضات (دج) — إن وجدت" dir="ltr" className="text-right" />
+                <Input value={d.paymentPeriodicity} onChange={(e) => set('paymentPeriodicity')(e.target.value)} placeholder="دورية الدفع — شهرياً" />
+              </div>
+            </EditorGroup>
+
+            <EditorGroup title="الملحق رقم 01 — بطاقة المنصب والمهام">
+              <Input value={d.annexResponsible} onChange={(e) => set('annexResponsible')(e.target.value)} placeholder="المسؤول المباشر" />
+              <Input value={d.annexQualifications} onChange={(e) => set('annexQualifications')(e.target.value)} placeholder="المؤهلات والشهادات المطلوبة" />
+              <Textarea value={d.annexDuties} onChange={(e) => set('annexDuties')(e.target.value)} rows={3} placeholder="المهام الأساسية للمنصب…" />
+              <Textarea value={d.annexSafety} onChange={(e) => set('annexSafety')(e.target.value)} rows={2} placeholder="المهام الخاصة بالسلامة…" />
+              <Textarea value={d.annexHours} onChange={(e) => set('annexHours')(e.target.value)} rows={2} placeholder="الحجم الساعي وجدول العمل…" />
+              <Textarea value={d.annexEquipment} onChange={(e) => set('annexEquipment')(e.target.value)} rows={2} placeholder="التجهيزات والوسائل اللازمة…" />
+              <Input value={d.annexDate} onChange={(e) => set('annexDate')(e.target.value)} placeholder="تاريخ إرفاق الملحق" />
+            </EditorGroup>
+
+            <EditorGroup title="المادة 14 — التحرير والتوقيعات">
+              <Input value={d.placeDate} onChange={(e) => set('placeDate')(e.target.value)} placeholder="تاريخ التحرير — يوم/شهر/سنة" />
               <div className="grid grid-cols-2 gap-2">
                 <Input value={d.signName1} onChange={(e) => set('signName1')(e.target.value)} placeholder="اسم الطرف الأول" />
-                <Input value={d.signRole2} onChange={(e) => set('signRole2')(e.target.value)} placeholder="صفة الطرف الثاني" />
+                <Input value={d.signRole1} onChange={(e) => set('signRole1')(e.target.value)} placeholder="صفته" />
               </div>
+              <Input value={d.signName2} onChange={(e) => set('signName2')(e.target.value)} placeholder="اسم الطرف الثاني (فارغ = اسم العامل)" />
               <div className="grid grid-cols-2 gap-2">
-                <Input value={d.signName2} onChange={(e) => set('signName2')(e.target.value)} placeholder="اسم الطرف الثاني" />
-                <Input value={d.visaName} onChange={(e) => set('visaName')(e.target.value)} placeholder="تأشيرة — الاسم" />
+                <Input value={d.visaName} onChange={(e) => set('visaName')(e.target.value)} placeholder="تأشيرة الرئيس — الاسم" />
+                <Input value={d.visaRole} onChange={(e) => set('visaRole')(e.target.value)} placeholder="صفته" />
               </div>
             </EditorGroup>
+
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
@@ -2011,7 +2463,7 @@ export function AdminPaperLibrarySection({
     {
       key: 'contract',
       title: 'عقد عمل (CDD)',
-      desc: 'عقد عمل محدد المدة بالمواد العشر كما في النموذج الرسمي — بيانات الطرفين والمدة والوظيفة والأجر.',
+      desc: 'النموذج الرسمي الكامل: 14 مادة + الملحق رقم 01 (بطاقة المنصب والمهام) — عقد موحد لكل الفروع مع تغيير الفرع والمنصب والمهام والأجر.',
       icon: <FileText className="h-5 w-5 text-(--club)" />,
       actions: (
         <Button size="sm" onClick={() => setDialog('contract')} className="bg-(--club) hover:bg-(--club)/90 text-white font-bold">
@@ -2194,7 +2646,7 @@ export function AdminPaperLibrarySection({
         onSaved={onSaved}
       />
       <TimeScheduleDialog open={dialog === 'schedule'} onClose={() => setDialog(null)} onSaved={onSaved} onOpenLetterhead={() => setLetterheadOpen(true)} />
-      <WorkContractDialog open={dialog === 'contract'} onClose={() => setDialog(null)} onSaved={onSaved} onOpenLetterhead={() => setLetterheadOpen(true)} />
+      <WorkContractDialog open={dialog === 'contract'} onClose={() => setDialog(null)} onSaved={onSaved} onOpenLetterhead={() => setLetterheadOpen(true)} branches={branches} />
       <WorkResumptionDialog open={dialog === 'resumption'} onClose={() => setDialog(null)} onSaved={onSaved} onOpenLetterhead={() => setLetterheadOpen(true)} />
       <TransportRequestDialog open={dialog === 'transport'} onClose={() => setDialog(null)} onSaved={onSaved} onOpenLetterhead={() => setLetterheadOpen(true)} />
       <BordereauDialog open={dialog === 'bordereau'} onClose={() => setDialog(null)} onSaved={onSaved} onOpenLetterhead={() => setLetterheadOpen(true)} />

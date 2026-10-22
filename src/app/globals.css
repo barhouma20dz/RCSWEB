@@ -405,3 +405,23 @@ html.light .logo-glow {
     display: none !important;
   }
 }
+
+/* فاصل صفحات أثناء الطباعة — للنماذج متعددة الصفحات (العقد ثم ملحقه) */
+.doc-page-break {
+  height: 1rem;
+}
+@media print {
+  .doc-page-break {
+    height: 0;
+    break-after: page;
+  }
+  /* الورقة الممتدة على عدة صفحات (العقد): إخراج رسمي نظيف — بلا إطار زخرفي مقطوع
+     أو علامة مائية في وسط التدفق، مع إبقائهما في معاينة الشاشة */
+  .doc-paper-flow {
+    overflow: visible;
+  }
+  .doc-paper-flow .doc-paper-frame,
+  .doc-paper-flow .doc-watermark {
+    display: none !important;
+  }
+}
