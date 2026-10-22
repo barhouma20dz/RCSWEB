@@ -13,8 +13,10 @@
  * 7) طلب إعانة مالية — مراسلة للمجلس الشعبي البلدي
  * 8) وصل استلام مستحقات — للدفعات المالية للمنتسبين
  *
- * كل نموذج: نافذة تحرير بمعاينة حية + طباعة A4 + أرشفة في مكتب النادي.
+ * كل نموذج: نافذة تحرير بمعاينة حية + طباعة + أرشفة في مكتب النادي.
  * كل الأوراق تحمل الترويسة الموحدة القابلة للتخصيص (letterhead-settings).
+ * إعدادات التنسيق عند التعديل (doc-blocks): محاذاة/ضبط، عنوان الوثيقة، ترتيب النصوص
+ * يدوياً، سطر جديد في نفس النص، حجم الكتابة والعريض والنقاط لكل نص، وحجم الورقة A4/A5.
  */
 
 import { useState } from 'react'
@@ -69,6 +71,26 @@ import {
   SignatureStrip,
 } from './letterhead-settings'
 import {
+  DocBlocksEditor,
+  DocBlocksView,
+  DocTextEditor,
+  DocTextView,
+  PaperSizeSelector,
+  PrintPageSize,
+  blocksFromJson,
+  blocksToJson,
+  blocksToPlain,
+  docTextFromJson,
+  docTextToJson,
+  makeBlock,
+  makeDocText,
+  paperSizeFromParams,
+  paperWidthClass,
+  type DocBlock,
+  type DocText,
+  type PaperSize,
+} from './doc-blocks'
+import {
   PrintPortal,
   parseSystemDesign,
   authFromParams,
@@ -90,17 +112,20 @@ function PaperShell({
   printable = true,
   wide = false,
   flow = false,
+  paperSize = 'A4',
 }: {
   children: React.ReactNode
   printable?: boolean
   wide?: boolean
   /** ورقة ممتدة على عدة صفحات (العقود) — بلا إطار زخرفي عند الطباعة */
   flow?: boolean
+  /** حجم الورقة A4 / A5 — يضبط عرض المعاينة */
+  paperSize?: PaperSize
 }) {
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full ${wide ? 'max-w-[730px]' : 'max-w-[680px]'} p-6 sm:p-9 ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(paperSize, wide)} ${paperSize === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -275,6 +300,9 @@ export interface TimeScheduleData {
   rightSign: string
   rightRole: string
   leftSign: string
+  /** عنوان الوثيقة المنسق — فارغ = العنوان المُركّب تلقائياً */
+  titleStyle: string
+  paperSize: PaperSize
 }
 
 function defaultScheduleCells(): string[] {
@@ -299,6 +327,8 @@ export const EMPTY_TIME_SCHEDULE: TimeScheduleData = {
   rightSign: '',
   rightRole: 'رئيس الرابطة',
   leftSign: '',
+  titleStyle: '',
+  paperSize: 'A4',
 }
 
 export function timeScheduleFromParams(p: Record<string, string> | undefined): TimeScheduleData {
@@ -321,18 +351,28 @@ export function timeScheduleFromParams(p: Record<string, string> | undefined): T
     rightSign: p?.rightSign ?? '',
     rightRole: p?.rightRole ?? EMPTY_TIME_SCHEDULE.rightRole,
     leftSign: p?.leftSign ?? '',
+    titleStyle: p?.titleStyle ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
+/** العنوان المُركّب تلقائياً — يستخدم عندما يُترك عنوان الوثيقة فارغاً */
+export function composeScheduleTitle(d: TimeScheduleData): string {
+  return `استعمال الزمن لنـاد: ${d.clubName.trim() || '..................'} — الموسم: ${seasonLabel()}`
+}
+
 export function TimeSchedulePaper({ data, printable = true }: { data: TimeScheduleData; printable?: boolean }) {
+  const title = docTextFromJson(data.titleStyle, makeDocText('', { fontSize: 17, bold: true, align: 'center' }))
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={data.paperSize}>
       <ClubLetterhead compact />
       <RefDateLine refNumber={data.refNumber} dateText={data.dateText} />
 
-      <h3 className="mt-4 text-center text-[17px] font-black underline decoration-2 underline-offset-8">
-        استعمال الزمن لنـاد: {data.clubName || '..................'} — الموسم: <span dir="ltr">{seasonLabel()}</span>
-      </h3>
+      <DocTextView
+        t={title}
+        fallback={composeScheduleTitle(data)}
+        className="mt-4 underline decoration-2 underline-offset-8"
+      />
 
       <div className="mt-5 space-y-1.5 text-[13px]">
         <div className="flex items-end gap-2"><span className="font-black shrink-0 w-28">الأسم واللقب:</span><span className="flex-1 border-b border-dotted border-neutral-400 text-center font-bold leading-7">{data.personName || '\u00A0'}</span></div>
@@ -395,6 +435,7 @@ export function TimeScheduleDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<TimeScheduleData>({ ...EMPTY_TIME_SCHEDULE })
+  const [titleDoc, setTitleDoc] = useState<DocText>(makeDocText('', { fontSize: 17, bold: true }))
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
@@ -406,6 +447,7 @@ export function TimeScheduleDialog({
       dateText: formatDateDMY(new Date()),
       cells: defaultScheduleCells(),
     })
+    setTitleDoc(makeDocText('', { fontSize: 17, bold: true }))
   }
   if (!open && seed) setSeed('')
 
@@ -415,6 +457,8 @@ export function TimeScheduleDialog({
   const setPeriod = (i: number) => (v: string) =>
     setD((prev) => ({ ...prev, periods: prev.periods.map((p, idx) => (idx === i ? v : p)) }))
 
+  const data: TimeScheduleData = { ...d, titleStyle: docTextToJson(titleDoc) }
+
   const saveArchive = () =>
     archive({
       refNumber: d.refNumber,
@@ -423,7 +467,7 @@ export function TimeScheduleDialog({
       category: 'وثائق الإدارة',
       content: `استعمال الزمن لناد ${d.clubName || '—'} للموسم ${seasonLabel()} — ${d.personName || '—'} (${d.rank}) — ${d.workPlace}.`,
       systemForm: 'time-schedule',
-      params: { ...d, periods: JSON.stringify(d.periods), cells: JSON.stringify(d.cells) },
+      params: { ...data, periods: JSON.stringify(d.periods), cells: JSON.stringify(d.cells) },
     })
 
   return (
@@ -440,10 +484,17 @@ export function TimeScheduleDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
+            <DocTextEditor
+              label="عنوان الوثيقة"
+              value={titleDoc}
+              onChange={setTitleDoc}
+              fallbackHint={composeScheduleTitle(d)}
+            />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>الرقم</Label>
@@ -497,13 +548,14 @@ export function TimeScheduleDialog({
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
-            <TimeSchedulePaper data={d} printable={false} />
+            <TimeSchedulePaper data={data} printable={false} />
           </PreviewPane>
         </div>
       </DialogContent>
       {open && (
         <PrintPortal>
-          <TimeSchedulePaper data={d} />
+          <PrintPageSize size={data.paperSize} />
+          <TimeSchedulePaper data={data} />
         </PrintPortal>
       )}
     </Dialog>
@@ -544,11 +596,16 @@ export interface WorkContractData {
   paymentPeriodicity: string
   // المادة 06 — المهام الخاصة بالمنصب
   clause6: string
+  /** عرض المهام كنقاط تعداد (Puces) */
+  dutiesBullets: string
   // المادة 11 + الإمضاءات
   placeDate: string
   signName1: string
   signRole1: string
   signName2: string
+  /** عنوان الوثيقة المنسق — فارغ = العنوان الافتراضي */
+  titleStyle: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_WORK_CONTRACT: WorkContractData = {
@@ -574,11 +631,17 @@ export const EMPTY_WORK_CONTRACT: WorkContractData = {
   allowances: '',
   paymentPeriodicity: 'شهرياً',
   clause6: '',
+  dutiesBullets: '',
   placeDate: '',
   signName1: '',
   signRole1: '',
   signName2: '',
+  titleStyle: '',
+  paperSize: 'A4',
 }
+
+/** عنوان العقد الافتراضي */
+export const CONTRACT_TITLE_FALLBACK = 'عقد عمل محدد المدة (CDD)'
 
 export function workContractFromParams(p: Record<string, string> | undefined): WorkContractData {
   return {
@@ -605,10 +668,13 @@ export function workContractFromParams(p: Record<string, string> | undefined): W
     paymentPeriodicity: p?.paymentPeriodicity ?? EMPTY_WORK_CONTRACT.paymentPeriodicity,
     // توافق مع الأرشيف القديم: مهام بطاقة المنصب تُعرض كمهام المادة 06
     clause6: p?.clause6 ?? p?.annexDuties ?? '',
+    dutiesBullets: p?.dutiesBullets === 'true' ? 'true' : '',
     placeDate: p?.placeDate ?? p?.placeText ?? '',
     signName1: p?.signName1 ?? '',
     signRole1: p?.signRole1 ?? '',
     signName2: p?.signName2 ?? '',
+    titleStyle: p?.titleStyle ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
@@ -676,13 +742,14 @@ export function WorkContractPaper({ data, printable = true }: { data: WorkContra
   const d = data
   const duties = d.clause6.trim() || composeClause6(d)
   const cause = d.contractCause.trim()
+  const title = docTextFromJson(d.titleStyle, makeDocText('', { fontSize: 19, bold: true, align: 'center' }))
 
   const sheet = (
-    <PaperShell printable={false} wide flow>
+    <PaperShell printable={false} wide flow paperSize={d.paperSize}>
       <ClubLetterhead compact />
       <div className="mt-2 text-center">
         <p className="text-[11.5px] font-black text-neutral-700">الجمهورية الجزائرية الديمقراطية الشعبية</p>
-        <h3 className="mt-1 text-[19px] font-black">عقد عمل محدد المدة (CDD)</h3>
+        <DocTextView t={title} fallback={CONTRACT_TITLE_FALLBACK} className="mt-1" />
         <p className="mt-1 text-[12px] font-bold text-neutral-600">
           رقم: <span className="font-mono">{d.refNumber || `................. / ن.ر.ر.س / ${new Date().getFullYear()}`}</span>
         </p>
@@ -783,9 +850,13 @@ export function WorkContractPaper({ data, printable = true }: { data: WorkContra
             والنشاط المكلف به.
           </p>
           <p>وتحدد المهام الخاصة بالمنصب كما يأتي:</p>
-          <p className="whitespace-pre-wrap border-b border-dotted border-neutral-500 px-2 font-bold leading-8">
-            {duties}
-          </p>
+          {d.dutiesBullets === 'true' ? (
+            <ContractUl items={duties.split('\n').filter((l) => l.trim())} />
+          ) : (
+            <p className="whitespace-pre-wrap border-b border-dotted border-neutral-500 px-2 font-bold leading-8">
+              {duties}
+            </p>
+          )}
         </ContractArticle>
 
         <ContractArticle num="07" title="الالتزامات المهنية">
@@ -885,6 +956,7 @@ export function WorkContractDialog({
   branches?: BranchWithAccount[]
 }) {
   const [d, setD] = useState<WorkContractData>({ ...EMPTY_WORK_CONTRACT })
+  const [titleDoc, setTitleDoc] = useState<DocText>(makeDocText('', { fontSize: 19, bold: true }))
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
@@ -895,6 +967,7 @@ export function WorkContractDialog({
       refNumber: `................. / ن.ر.ر.س / ${new Date().getFullYear()}`,
       placeDate: formatDateDMY(new Date()),
     })
+    setTitleDoc(makeDocText('', { fontSize: 19, bold: true }))
   }
   if (!open && seed) setSeed('')
 
@@ -916,8 +989,10 @@ export function WorkContractDialog({
       category: 'عقود العمل',
       content: `عقد عمل محدد المدة (CDD) بين النادي (فرع ${d.party1Branch || d.sportBranch || '—'}) والسيد ${d.party2Name || '—'} بصفة ${d.jobTitle || '—'}، من ${d.startAt || '—'} إلى ${d.endAt || '—'}.`,
       systemForm: 'work-contract',
-      params: { ...d },
+      params: { ...d, titleStyle: docTextToJson(titleDoc) },
     })
+
+  const data: WorkContractData = { ...d, titleStyle: docTextToJson(titleDoc) }
 
   const positions = POSITION_SUGGESTIONS[d.sportBranch.trim()]
   const branchSelectClass = 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs'
@@ -937,10 +1012,17 @@ export function WorkContractDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
+            <DocTextEditor
+              label="عنوان الوثيقة"
+              value={titleDoc}
+              onChange={setTitleDoc}
+              fallbackHint={CONTRACT_TITLE_FALLBACK}
+            />
             <div className="space-y-1.5">
               <Label>رقم العقد</Label>
               <Input value={d.refNumber} onChange={(e) => set('refNumber')(e.target.value)} dir="ltr" className="text-right" />
@@ -1047,8 +1129,19 @@ export function WorkContractDialog({
                 value={d.clause6}
                 onChange={(e) => set('clause6')(e.target.value)}
                 rows={4}
-                placeholder="المهام الخاصة بالمنصب… (فارغ = يُركّب وصف عام من الفرع والصفة)"
+                placeholder="المهام الخاصة بالمنصب… (Enter لسطر جديد — فارغ = يُركّب وصف عام من الفرع والصفة)"
               />
+              <div className="flex items-center justify-between rounded-xl border border-(--border) bg-muted/40 px-3 py-2">
+                <div>
+                  <div className="text-[11px] font-black text-(--club-dark)">عرض المهام كنقاط تعداد</div>
+                  <p className="text-[9.5px] text-muted-foreground">Puces — كل سطر يُطبع بنقطة</p>
+                </div>
+                <Switch
+                  checked={d.dutiesBullets === 'true'}
+                  onCheckedChange={(v) => set('dutiesBullets')(v ? 'true' : '')}
+                  aria-label="عرض المهام كنقاط"
+                />
+              </div>
             </EditorGroup>
 
             <EditorGroup title="المادة 11 — التحرير والإمضاءات">
@@ -1067,13 +1160,14 @@ export function WorkContractDialog({
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
-            <WorkContractPaper data={d} printable={false} />
+            <WorkContractPaper data={data} printable={false} />
           </PreviewPane>
         </div>
       </DialogContent>
       {open && (
         <PrintPortal>
-          <WorkContractPaper data={d} />
+          <PrintPageSize size={data.paperSize} />
+          <WorkContractPaper data={data} />
         </PrintPortal>
       )}
     </Dialog>
@@ -1099,6 +1193,9 @@ export interface WorkResumptionData {
   leaveTo: string
   backAt: string
   placeDate: string
+  /** السطر الافتتاحي المنسق — فارغ = النص الافتراضي */
+  openingStyle: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_WORK_RESUMPTION: WorkResumptionData = {
@@ -1116,7 +1213,12 @@ export const EMPTY_WORK_RESUMPTION: WorkResumptionData = {
   leaveTo: '',
   backAt: '',
   placeDate: '',
+  openingStyle: '',
+  paperSize: 'A4',
 }
+
+/** السطر الافتتاحي الافتراضي */
+export const RESUMPTION_OPENING_FALLBACK = 'في اليوم الأول من شهر سبتمبر من عام ألفين وستة وعشرين.'
 
 export function workResumptionFromParams(p: Record<string, string> | undefined): WorkResumptionData {
   return {
@@ -1134,20 +1236,23 @@ export function workResumptionFromParams(p: Record<string, string> | undefined):
     leaveTo: p?.leaveTo ?? '',
     backAt: p?.backAt ?? '',
     placeDate: p?.placeDate ?? '',
+    openingStyle: p?.openingStyle ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
 export function WorkResumptionPaper({ data, printable = true }: { data: WorkResumptionData; printable?: boolean }) {
   const d = data
+  const opening = docTextFromJson(d.openingStyle, makeDocText('', { fontSize: 13, bold: true, align: 'center' }))
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={d.paperSize}>
       <ClubLetterhead compact />
       <div className="mt-2 whitespace-pre-line text-right text-[11px] font-bold leading-[1.7] text-neutral-700">
         {d.authorityLines}
       </div>
       <RefDateLine refNumber={d.refNumber} dateText="" />
 
-      <p className="mt-4 text-center text-[13px] font-black">{d.openingLine || '\u00A0'}</p>
+      <DocTextView t={opening} fallback={d.openingLine.trim() || RESUMPTION_OPENING_FALLBACK} className="mt-4" />
 
       <div className="mt-4 space-y-1 text-[13.5px] leading-[2]">
         <p>نشهد نحن مسؤول الهيئة: <span className="font-black">{d.authorityName || '..................'}</span>.</p>
@@ -1195,16 +1300,24 @@ export function WorkResumptionDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<WorkResumptionData>({ ...EMPTY_WORK_RESUMPTION })
+  const [openingDoc, setOpeningDoc] = useState<DocText>(makeDocText('', { fontSize: 13, bold: true }))
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
   if (open && !seed) {
     setSeed('open')
     setD({ ...EMPTY_WORK_RESUMPTION, refNumber: `.... / ر.أ.ق.س /${new Date().getFullYear()}`, placeDate: formatDateDMY(new Date()) })
+    setOpeningDoc(makeDocText('', { fontSize: 13, bold: true }))
   }
   if (!open && seed) setSeed('')
 
   const set = (k: keyof WorkResumptionData) => (v: string) => setD((prev) => ({ ...prev, [k]: v }))
+
+  const data: WorkResumptionData = {
+    ...d,
+    openingLine: openingDoc.text,
+    openingStyle: docTextToJson(openingDoc),
+  }
 
   const saveArchive = () =>
     archive({
@@ -1214,7 +1327,7 @@ export function WorkResumptionDialog({
       category: 'وثائق الإدارة',
       content: `محضر استئناف العمل: ${d.personName || '—'} (${d.personRank}) — استوفى عطلته ${d.leaveType} المقدرة بـ ${d.leaveDays} يوماً من ${d.leaveFrom} إلى ${d.leaveTo}، وأعيد إلى منصبه ابتداء من ${d.backAt}.`,
       systemForm: 'work-resumption',
-      params: { ...d },
+      params: { ...data },
     })
 
   return (
@@ -1231,11 +1344,12 @@ export function WorkResumptionDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
-            <EditorGroup title="الجهة المصدرة (تظهر تحت الترويسة)">
+            <EditorGroup title="الجهة المصدرة (تظهر تحت الترويسة) — Enter لسطر جديد">
               <Textarea value={d.authorityLines} onChange={(e) => set('authorityLines')(e.target.value)} rows={4} placeholder="سطر لكل جهة…" />
             </EditorGroup>
             <div className="grid grid-cols-2 gap-2">
@@ -1266,19 +1380,23 @@ export function WorkResumptionDialog({
                 <Input value={d.backAt} onChange={(e) => set('backAt')(e.target.value)} placeholder="الاستئناف" />
               </div>
             </EditorGroup>
-            <EditorGroup title="الافتتاحية (تاريخ بالحروف)">
-              <Input value={d.openingLine} onChange={(e) => set('openingLine')(e.target.value)} />
-            </EditorGroup>
+            <DocTextEditor
+              label="الافتتاحية (تاريخ بالحروف) — سطر جديد داخل نفس الحقل بمفتاح Enter"
+              value={openingDoc}
+              onChange={setOpeningDoc}
+              fallbackHint={RESUMPTION_OPENING_FALLBACK}
+            />
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
-            <WorkResumptionPaper data={d} printable={false} />
+            <WorkResumptionPaper data={data} printable={false} />
           </PreviewPane>
         </div>
       </DialogContent>
       {open && (
         <PrintPortal>
-          <WorkResumptionPaper data={d} />
+          <PrintPageSize size={data.paperSize} />
+          <WorkResumptionPaper data={data} />
         </PrintPortal>
       )}
     </Dialog>
@@ -1294,10 +1412,16 @@ export interface TransportRequestData {
   dateText: string
   recipient: string
   subject: string
+  /** تنسيق الموضوع (عنوان الوثيقة) — JSON DocText */
+  subjectStyle: string
   destination: string
   event: string
   schedule: string
+  /** النص العادي — للتوافق والأرشفة القديمة */
   body: string
+  /** فقرات المتن المنسقة — JSON DocBlock[] */
+  bodyBlocks: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_TRANSPORT: TransportRequestData = {
@@ -1305,10 +1429,13 @@ export const EMPTY_TRANSPORT: TransportRequestData = {
   dateText: '',
   recipient: 'رئيس المجلس الشعبي البلدي لبلدية سعيدة',
   subject: '',
+  subjectStyle: '',
   destination: '',
   event: '',
   schedule: '',
   body: '',
+  bodyBlocks: '',
+  paperSize: 'A4',
 }
 
 export function transportFromParams(p: Record<string, string> | undefined): TransportRequestData {
@@ -1317,10 +1444,13 @@ export function transportFromParams(p: Record<string, string> | undefined): Tran
     dateText: p?.dateText ?? '',
     recipient: p?.recipient ?? EMPTY_TRANSPORT.recipient,
     subject: p?.subject ?? '',
+    subjectStyle: p?.subjectStyle ?? '',
     destination: p?.destination ?? '',
     event: p?.event ?? '',
     schedule: p?.schedule ?? '',
     body: p?.body ?? '',
+    bodyBlocks: p?.bodyBlocks ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
@@ -1329,18 +1459,27 @@ function composeTransportBody(d: TransportRequestData): string {
 }
 
 export function TransportRequestPaper({ data, printable = true }: { data: TransportRequestData; printable?: boolean }) {
-  const body = data.body.trim() || composeTransportBody(data)
+  const subjectDoc = docTextFromJson(
+    data.subjectStyle,
+    makeDocText(data.subject, { fontSize: 15, bold: true, align: 'center' })
+  )
+  const blocks = blocksFromJson(data.bodyBlocks, data.body.trim() || composeTransportBody(data))
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={data.paperSize}>
       <ClubLetterhead />
       <RefDateLine refNumber={data.refNumber} dateText={data.dateText} />
       <p className="mt-4 text-[13.5px] font-black">إلى السيد: {data.recipient || '.....................'}</p>
-      <p className="mt-4 text-center text-[15px] font-black underline decoration-2 underline-offset-8">
-        الموضوع: {data.subject || '.....................'}
+      <p
+        className="mt-4 underline decoration-2 underline-offset-8"
+        style={{
+          textAlign: subjectDoc.align,
+          fontSize: `${subjectDoc.fontSize}px`,
+          fontWeight: subjectDoc.bold ? 900 : 600,
+        }}
+      >
+        الموضوع: {subjectDoc.text.trim() || '.....................'}
       </p>
-      <div className="mt-5 min-h-[170px] whitespace-pre-wrap text-[13.5px] font-medium leading-[2.1] text-neutral-800">
-        {body}
-      </div>
+      <DocBlocksView blocks={blocks} className="mt-5 min-h-[170px] text-neutral-800" />
       <p className="mt-2 text-[13.5px] font-bold leading-[2]">
         في الأخير تقبلوا مني سيدي فائق الاحترام والتقدير.
       </p>
@@ -1367,24 +1506,33 @@ export function TransportRequestDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<TransportRequestData>({ ...EMPTY_TRANSPORT })
-  const [manual, setManual] = useState(false)
-  const [manualBody, setManualBody] = useState('')
+  const [subjectDoc, setSubjectDoc] = useState<DocText>(makeDocText('', { fontSize: 15, bold: true }))
+  const [blocks, setBlocks] = useState<DocBlock[]>([makeBlock('')])
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
   if (open && !seed) {
     setSeed('open')
-    setD({
+    const init: TransportRequestData = {
       ...EMPTY_TRANSPORT,
       refNumber: `.../ن.ر.ه.ر.س ${new Date().getFullYear()}`,
       dateText: formatDateDMY(new Date()),
       subject: 'طلب وسيلة نقل للتنقل إلى مدينة .........',
-    })
+    }
+    setD(init)
+    setSubjectDoc(makeDocText(init.subject, { fontSize: 15, bold: true }))
+    setBlocks([makeBlock(composeTransportBody(init))])
   }
   if (!open && seed) setSeed('')
 
   const set = (k: keyof TransportRequestData) => (v: string) => setD((prev) => ({ ...prev, [k]: v }))
-  const data: TransportRequestData = { ...d, body: manual ? manualBody : '' }
+  const data: TransportRequestData = {
+    ...d,
+    subject: subjectDoc.text,
+    subjectStyle: docTextToJson(subjectDoc),
+    body: blocksToPlain(blocks),
+    bodyBlocks: blocksToJson(blocks),
+  }
 
   const saveArchive = () =>
     archive({
@@ -1392,9 +1540,9 @@ export function TransportRequestDialog({
       title: `طلب وسيلة نقل — ${d.destination || 'غير معبأ'}`,
       type: 'request',
       category: 'مراسلات رسمية',
-      content: data.body.trim() || composeTransportBody(d),
+      content: data.body || composeTransportBody(d),
       systemForm: 'transport-request',
-      params: { ...d, body: data.body.trim() || composeTransportBody(d) },
+      params: { ...data, body: data.body || composeTransportBody(d) },
     })
 
   return (
@@ -1411,9 +1559,10 @@ export function TransportRequestDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -1429,25 +1578,24 @@ export function TransportRequestDialog({
               <Label>إلى السيد</Label>
               <Input value={d.recipient} onChange={(e) => set('recipient')(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label>الموضوع</Label>
-              <Input value={d.subject} onChange={(e) => set('subject')(e.target.value)} placeholder="طلب وسيلة نقل للتنقل إلى مدينة…" />
-            </div>
+            <DocTextEditor
+              label="الموضوع — عنوان الوثيقة"
+              value={subjectDoc}
+              onChange={setSubjectDoc}
+              hint="Aligner / حجم الكتابة / عريض"
+            />
             <EditorGroup title="تفاصيل الطلب (تُركّب في النص)">
               <Input value={d.destination} onChange={(e) => set('destination')(e.target.value)} placeholder="الوجهة — مثال: سيدي بلعباس" />
               <Input value={d.event} onChange={(e) => set('event')(e.target.value)} placeholder="المناسبة — مثال: المشاركة في الجائزة الكبرى لترياتلون" />
               <Textarea value={d.schedule} onChange={(e) => set('schedule')(e.target.value)} rows={3} placeholder="الموعد — مثال: يومي الخميس والجمعة 04-09-2025، الانطلاق الساعة 06:30 والعودة يوم الجمعة عند انتهاء المنافسة" />
             </EditorGroup>
-            <div className="flex items-center justify-between rounded-xl border border-(--border) bg-muted/40 p-3">
-              <div>
-                <div className="text-xs font-black text-(--club-dark)">تحرير النص يدوياً</div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">لتعديل الصياغة بحرية كاملة</p>
-              </div>
-              <Switch checked={manual} onCheckedChange={setManual} />
-            </div>
-            {manual && (
-              <Textarea value={manualBody} onChange={(e) => setManualBody(e.target.value)} rows={6} placeholder="اكتب نص الطلب…" />
-            )}
+            <DocBlocksEditor
+              label="نصوص الطلب — قابلة للترتيب والتنسيق"
+              blocks={blocks}
+              onChange={setBlocks}
+              hint="Aligner / Justifier + حجم الكتابة + عريض + نقاط + ترتيب يدوي بالأسهم، وEnter لسطر جديد في نفس النص"
+              addLabel="إضافة نص جديد"
+            />
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
@@ -1457,6 +1605,7 @@ export function TransportRequestDialog({
       </DialogContent>
       {open && (
         <PrintPortal>
+          <PrintPageSize size={data.paperSize} />
           <TransportRequestPaper data={data} />
         </PrintPortal>
       )}
@@ -1479,6 +1628,9 @@ export interface BordereauData {
   dateText: string
   recipient: string
   rows: BordereauRow[]
+  /** عنوان الوثيقة المنسق — فارغ = «جدول إرسال» */
+  titleStyle: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_BORDEREAU: BordereauData = {
@@ -1486,7 +1638,12 @@ export const EMPTY_BORDEREAU: BordereauData = {
   dateText: '',
   recipient: '',
   rows: [{ doc: '', count: '', note: '' }],
+  titleStyle: '',
+  paperSize: 'A4',
 }
+
+/** عنوان جدول الإرسال الافتراضي */
+export const BORDEREAU_TITLE_FALLBACK = 'جدول إرســــال'
 
 export function bordereauFromParams(p: Record<string, string> | undefined): BordereauData {
   let rows: BordereauRow[] = [{ doc: '', count: '', note: '' }]
@@ -1498,6 +1655,8 @@ export function bordereauFromParams(p: Record<string, string> | undefined): Bord
     dateText: p?.dateText ?? '',
     recipient: p?.recipient ?? '',
     rows: Array.isArray(rows) && rows.length ? rows : [{ doc: '', count: '', note: '' }],
+    titleStyle: p?.titleStyle ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
@@ -1508,16 +1667,19 @@ function bordereauTotal(rows: BordereauRow[]): string {
 
 export function BordereauPaper({ data, printable = true }: { data: BordereauData; printable?: boolean }) {
   const total = bordereauTotal(data.rows)
+  const title = docTextFromJson(data.titleStyle, makeDocText('', { fontSize: 24, bold: true, align: 'center' }))
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={data.paperSize}>
       <ClubLetterhead compact />
       <RefDateLine refNumber={data.refNumber} dateText="" />
       <p className="mt-4 text-[13.5px] font-black">إلى السيد:</p>
       <p className="mt-1 text-[13.5px] font-black text-center">{data.recipient || '.....................'}</p>
 
-      <h3 className="mt-5 text-center text-2xl font-black tracking-wide">
-        جدول إرســــال
-      </h3>
+      <DocTextView
+        t={title}
+        fallback={BORDEREAU_TITLE_FALLBACK}
+        className="mt-5 tracking-wide"
+      />
       <p className="mt-2 text-[11.5px] font-bold text-center">
         سعيدة في: <span dir="ltr">{data.dateText || '..........'}</span>
       </p>
@@ -1567,6 +1729,7 @@ export function BordereauDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<BordereauData>({ ...EMPTY_BORDEREAU })
+  const [titleDoc, setTitleDoc] = useState<DocText>(makeDocText('', { fontSize: 24, bold: true }))
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
@@ -1578,6 +1741,7 @@ export function BordereauDialog({
       dateText: formatDateDMY(new Date()),
       rows: [{ doc: 'شهادة مدرسية', count: '', note: 'للإعلام' }],
     })
+    setTitleDoc(makeDocText('', { fontSize: 24, bold: true }))
   }
   if (!open && seed) setSeed('')
 
@@ -1587,6 +1751,8 @@ export function BordereauDialog({
   const removeRow = (i: number) =>
     setD((prev) => ({ ...prev, rows: prev.rows.length > 1 ? prev.rows.filter((_, idx) => idx !== i) : prev.rows }))
 
+  const data: BordereauData = { ...d, titleStyle: docTextToJson(titleDoc) }
+
   const saveArchive = () =>
     archive({
       refNumber: d.refNumber,
@@ -1595,7 +1761,7 @@ export function BordereauDialog({
       category: 'مراسلات رسمية',
       content: `جدول إرسال (${d.rows.length} وثائق — المجموع ${bordereauTotal(d.rows) || '—'}) إلى ${d.recipient || '—'} بتاريخ ${d.dateText}.`,
       systemForm: 'bordereau',
-      params: { ...d, rows: JSON.stringify(d.rows) },
+      params: { ...data, rows: JSON.stringify(d.rows) },
     })
 
   return (
@@ -1612,10 +1778,17 @@ export function BordereauDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => setD((p) => ({ ...p, paperSize: s }))} />
             </div>
+            <DocTextEditor
+              label="عنوان الوثيقة"
+              value={titleDoc}
+              onChange={setTitleDoc}
+              fallbackHint={BORDEREAU_TITLE_FALLBACK}
+            />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>الرقم</Label>
@@ -1657,13 +1830,14 @@ export function BordereauDialog({
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
-            <BordereauPaper data={d} printable={false} />
+            <BordereauPaper data={data} printable={false} />
           </PreviewPane>
         </div>
       </DialogContent>
       {open && (
         <PrintPortal>
-          <BordereauPaper data={d} />
+          <PrintPageSize size={data.paperSize} />
+          <BordereauPaper data={data} />
         </PrintPortal>
       )}
     </Dialog>
@@ -1677,26 +1851,41 @@ export function BordereauDialog({
 export interface ActivityCertificateData {
   witness: string
   org: string
+  /** النص العادي — للتوافق والأرشفة القديمة */
   body: string
+  /** فقرات نص الشهادة المنسقة — JSON DocBlock[] */
+  bodyBlocks: string
   placeDate: string
   signer: string
+  /** عنوان الوثيقة المنسق — فارغ = العنوان الافتراضي */
+  titleStyle: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_ACTIVITY_CERT: ActivityCertificateData = {
   witness: '',
   org: 'جمعية النادي الرياضي الهاوي متعدد الرياضات الرائد بلدية سعيدة',
   body: '',
+  bodyBlocks: '',
   placeDate: '',
   signer: '',
+  titleStyle: '',
+  paperSize: 'A4',
 }
+
+/** عنوان الشهادة الافتراضي */
+export const CERT_TITLE_FALLBACK = 'شَهَادَة إِثْبَات مَكَان مُزَاوَلَة النَّشَاط'
 
 export function activityCertFromParams(p: Record<string, string> | undefined): ActivityCertificateData {
   return {
     witness: p?.witness ?? '',
     org: p?.org ?? EMPTY_ACTIVITY_CERT.org,
     body: p?.body ?? '',
+    bodyBlocks: p?.bodyBlocks ?? '',
     placeDate: p?.placeDate ?? '',
     signer: p?.signer ?? '',
+    titleStyle: p?.titleStyle ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
@@ -1709,12 +1898,16 @@ function composeActivityBody(place: string): string {
 }
 
 export function ActivityCertificatePaper({ data, printable = true }: { data: ActivityCertificateData; printable?: boolean }) {
+  const title = docTextFromJson(data.titleStyle, makeDocText('', { fontSize: 19, bold: true, align: 'center' }))
+  const blocks = blocksFromJson(data.bodyBlocks, data.body.trim() || composeActivityBody(''))
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={data.paperSize}>
       <ClubLetterhead />
-      <h3 className="mt-5 text-center text-[19px] font-black tracking-wide">
-        شَهَادَة إِثْبَات مَكَان مُزَاوَلَة النَّشَاط
-      </h3>
+      <DocTextView
+        t={title}
+        fallback={CERT_TITLE_FALLBACK}
+        className="mt-5 tracking-wide"
+      />
 
       <p className="mt-6 text-[13.5px] font-black leading-[2]">{data.witness || 'يشهد .................. أن:'}</p>
 
@@ -1722,9 +1915,7 @@ export function ActivityCertificatePaper({ data, printable = true }: { data: Act
         {data.org}
       </p>
 
-      <div className="mt-4 whitespace-pre-wrap text-[13.5px] font-medium leading-[2.05] text-neutral-800">
-        {data.body.trim() || composeActivityBody('')}
-      </div>
+      <DocBlocksView blocks={blocks} className="mt-4 text-neutral-800" />
 
       <p className="mt-5 text-[13px] font-black">
         حرر بسعيدة في: <span dir="ltr">{data.placeDate || '........ / ........ / ........'}</span>
@@ -1752,16 +1943,32 @@ export function ActivityCertificateDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<ActivityCertificateData>({ ...EMPTY_ACTIVITY_CERT })
+  const [titleDoc, setTitleDoc] = useState<DocText>(makeDocText('', { fontSize: 19, bold: true }))
+  const [blocks, setBlocks] = useState<DocBlock[]>([makeBlock('')])
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
   if (open && !seed) {
     setSeed('open')
-    setD({ ...EMPTY_ACTIVITY_CERT, witness: 'يشهد مدير الملعب البلدي الإخوة براسي – سعيدة أن:', placeDate: formatDateDMY(new Date()), signer: 'مدير الملعب البلدي الإخوة براسي' })
+    const init: ActivityCertificateData = {
+      ...EMPTY_ACTIVITY_CERT,
+      witness: 'يشهد مدير الملعب البلدي الإخوة براسي – سعيدة أن:',
+      placeDate: formatDateDMY(new Date()),
+      signer: 'مدير الملعب البلدي الإخوة براسي',
+    }
+    setD(init)
+    setTitleDoc(makeDocText('', { fontSize: 19, bold: true }))
+    setBlocks([makeBlock(composeActivityBody(''))])
   }
   if (!open && seed) setSeed('')
 
   const set = (k: keyof ActivityCertificateData) => (v: string) => setD((prev) => ({ ...prev, [k]: v }))
+  const data: ActivityCertificateData = {
+    ...d,
+    body: blocksToPlain(blocks),
+    bodyBlocks: blocksToJson(blocks),
+    titleStyle: docTextToJson(titleDoc),
+  }
 
   const saveArchive = () =>
     archive({
@@ -1771,7 +1978,7 @@ export function ActivityCertificateDialog({
       category: 'وثائق الإدارة',
       content: `شهادة صادرة عن ${d.signer || 'مدير الملعب البلدي'} تثبت مزاولة ${d.org} لأنشطتها الرياضية بانتظام.`,
       systemForm: 'activity-certificate',
-      params: { ...d },
+      params: { ...data },
     })
 
   return (
@@ -1788,10 +1995,17 @@ export function ActivityCertificateDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
+            <DocTextEditor
+              label="عنوان الوثيقة"
+              value={titleDoc}
+              onChange={setTitleDoc}
+              fallbackHint={CERT_TITLE_FALLBACK}
+            />
             <div className="space-y-1.5">
               <Label>الشاهد (الجهة المصدرة)</Label>
               <Input value={d.witness} onChange={(e) => set('witness')(e.target.value)} placeholder="مثال: يشهد مدير الملعب البلدي الإخوة براسي – سعيدة أن:" />
@@ -1800,10 +2014,13 @@ export function ActivityCertificateDialog({
               <Label>الجهة المستفيدة</Label>
               <Input value={d.org} onChange={(e) => set('org')(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label>نص الشهادة</Label>
-              <Textarea value={d.body} onChange={(e) => set('body')(e.target.value)} rows={8} placeholder="فارغ = النص الرسمي الافتراضي" />
-            </div>
+            <DocBlocksEditor
+              label="نص الشهادة — قابلة للترتيب والتنسيق"
+              blocks={blocks}
+              onChange={setBlocks}
+              hint="Aligner / Justifier + حجم الكتابة + عريض + نقاط + ترتيب يدوي، وEnter لسطر جديد في نفس النص"
+              addLabel="إضافة نص جديد"
+            />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>تاريخ التحرير</Label>
@@ -1817,13 +2034,14 @@ export function ActivityCertificateDialog({
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
-            <ActivityCertificatePaper data={d} printable={false} />
+            <ActivityCertificatePaper data={data} printable={false} />
           </PreviewPane>
         </div>
       </DialogContent>
       {open && (
         <PrintPortal>
-          <ActivityCertificatePaper data={d} />
+          <PrintPageSize size={data.paperSize} />
+          <ActivityCertificatePaper data={data} />
         </PrintPortal>
       )}
     </Dialog>
@@ -1839,7 +2057,13 @@ export interface SubsidyRequestData {
   dateText: string
   recipient: string
   subject: string
+  /** تنسيق الموضوع — JSON DocText */
+  subjectStyle: string
+  /** النص العادي — للتوافق والأرشفة القديمة */
   body: string
+  /** فقرات نص الطلب المنسقة — JSON DocBlock[] */
+  bodyBlocks: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_SUBSIDY: SubsidyRequestData = {
@@ -1847,7 +2071,10 @@ export const EMPTY_SUBSIDY: SubsidyRequestData = {
   dateText: '',
   recipient: 'رئيس المجلس الشعبي البلدي لبلدية سعيدة',
   subject: 'طلب إعانة مالية',
+  subjectStyle: '',
   body: '',
+  bodyBlocks: '',
+  paperSize: 'A4',
 }
 
 export function subsidyFromParams(p: Record<string, string> | undefined): SubsidyRequestData {
@@ -1856,25 +2083,37 @@ export function subsidyFromParams(p: Record<string, string> | undefined): Subsid
     dateText: p?.dateText ?? '',
     recipient: p?.recipient ?? EMPTY_SUBSIDY.recipient,
     subject: p?.subject ?? EMPTY_SUBSIDY.subject,
+    subjectStyle: p?.subjectStyle ?? '',
     body: p?.body ?? '',
+    bodyBlocks: p?.bodyBlocks ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
 const SUBSIDY_DEFAULT_BODY = `يشرفني أن أتقدم إلى سيادتكم المحترمة بهذا الطلب، راجيًا منكم التفضل بالموافقة على منح جمعية النادي الرياضي الهاوي المتعدد الرياضات الرائد – بلدية سعيدة إعانة مالية، وذلك قصد المساهمة في دعم نشاطات الجمعية الرياضية وتمكينها من مواصلة برامجها الرياضية وتغطية جزء من احتياجاتها ونفقاتها المتعلقة بمختلف النشاطات والتظاهرات الرياضية.`
 
 export function SubsidyRequestPaper({ data, printable = true }: { data: SubsidyRequestData; printable?: boolean }) {
-  const body = data.body.trim() || SUBSIDY_DEFAULT_BODY
+  const subjectDoc = docTextFromJson(
+    data.subjectStyle,
+    makeDocText(data.subject, { fontSize: 15, bold: true, align: 'center' })
+  )
+  const blocks = blocksFromJson(data.bodyBlocks, data.body.trim() || SUBSIDY_DEFAULT_BODY)
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={data.paperSize}>
       <ClubLetterhead />
       <RefDateLine refNumber={data.refNumber} dateText={data.dateText} />
       <p className="mt-4 text-[13.5px] font-black">إلى السيد: {data.recipient || '.....................'}</p>
-      <p className="mt-4 text-center text-[15px] font-black underline decoration-2 underline-offset-8">
-        الموضوع: {data.subject || '.....................'}
+      <p
+        className="mt-4 underline decoration-2 underline-offset-8"
+        style={{
+          textAlign: subjectDoc.align,
+          fontSize: `${subjectDoc.fontSize}px`,
+          fontWeight: subjectDoc.bold ? 900 : 600,
+        }}
+      >
+        الموضوع: {subjectDoc.text.trim() || '.....................'}
       </p>
-      <div className="mt-5 min-h-[170px] whitespace-pre-wrap text-[13.5px] font-medium leading-[2.1] text-neutral-800">
-        {body}
-      </div>
+      <DocBlocksView blocks={blocks} className="mt-5 min-h-[170px] text-neutral-800" />
       <p className="mt-2 text-[13.5px] font-bold leading-[2]">
         وفي انتظار استجابتكم، تقبلوا فائق عبارات الاحترام والتقدير.
       </p>
@@ -1901,16 +2140,27 @@ export function SubsidyRequestDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<SubsidyRequestData>({ ...EMPTY_SUBSIDY })
+  const [subjectDoc, setSubjectDoc] = useState<DocText>(makeDocText(EMPTY_SUBSIDY.subject, { fontSize: 15, bold: true }))
+  const [blocks, setBlocks] = useState<DocBlock[]>([makeBlock('')])
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
   if (open && !seed) {
     setSeed('open')
     setD({ ...EMPTY_SUBSIDY, refNumber: `.../ن.ر.ه.ر.س ${new Date().getFullYear()}`, dateText: formatDateDMY(new Date()) })
+    setSubjectDoc(makeDocText(EMPTY_SUBSIDY.subject, { fontSize: 15, bold: true }))
+    setBlocks([makeBlock(SUBSIDY_DEFAULT_BODY)])
   }
   if (!open && seed) setSeed('')
 
   const set = (k: keyof SubsidyRequestData) => (v: string) => setD((prev) => ({ ...prev, [k]: v }))
+  const data: SubsidyRequestData = {
+    ...d,
+    subject: subjectDoc.text,
+    subjectStyle: docTextToJson(subjectDoc),
+    body: blocksToPlain(blocks),
+    bodyBlocks: blocksToJson(blocks),
+  }
 
   const saveArchive = () =>
     archive({
@@ -1918,9 +2168,9 @@ export function SubsidyRequestDialog({
       title: 'طلب إعانة مالية',
       type: 'request',
       category: 'مراسلات رسمية',
-      content: d.body.trim() || SUBSIDY_DEFAULT_BODY,
+      content: data.body || SUBSIDY_DEFAULT_BODY,
       systemForm: 'subsidy-request',
-      params: { ...d },
+      params: { ...data, body: data.body || SUBSIDY_DEFAULT_BODY },
     })
 
   return (
@@ -1992,6 +2242,9 @@ export interface ReceiptData {
   amountNote: string
   reason: string
   dateText: string
+  /** عنوان الوثيقة المنسق — فارغ = «وصل استلام مستحقات» */
+  titleStyle: string
+  paperSize: PaperSize
 }
 
 export const EMPTY_RECEIPT: ReceiptData = {
@@ -2003,7 +2256,12 @@ export const EMPTY_RECEIPT: ReceiptData = {
   amountNote: '',
   reason: 'أجر شهر',
   dateText: '',
+  titleStyle: '',
+  paperSize: 'A4',
 }
+
+/** عنوان الوصل الافتراضي */
+export const RECEIPT_TITLE_FALLBACK = 'وصل استلام مستحقات'
 
 export function receiptFromParams(p: Record<string, string> | undefined): ReceiptData {
   return {
@@ -2015,15 +2273,18 @@ export function receiptFromParams(p: Record<string, string> | undefined): Receip
     amountNote: p?.amountNote ?? '',
     reason: p?.reason ?? EMPTY_RECEIPT.reason,
     dateText: p?.dateText ?? '',
+    titleStyle: p?.titleStyle ?? '',
+    paperSize: paperSizeFromParams(p),
   }
 }
 
 export function ReceiptPaper({ data, printable = true }: { data: ReceiptData; printable?: boolean }) {
   const d = data
+  const title = docTextFromJson(d.titleStyle, makeDocText('', { fontSize: 22, bold: true, align: 'center' }))
   return (
-    <PaperShell printable={printable}>
+    <PaperShell printable={printable} paperSize={d.paperSize}>
       <ClubLetterhead compact />
-      <h3 className="mt-5 text-center text-[22px] font-black tracking-wide">وصل استلام مستحقات</h3>
+      <DocTextView t={title} fallback={RECEIPT_TITLE_FALLBACK} className="mt-5 tracking-wide" />
       <p className="mt-1 text-center text-[12px] font-bold text-muted-foreground">أنا الممضي أسفله</p>
 
       <div className="mt-7 space-y-6 text-[13.5px]">
@@ -2070,16 +2331,19 @@ export function ReceiptDialog({
   onOpenSignatures?: () => void
 }) {
   const [d, setD] = useState<ReceiptData>({ ...EMPTY_RECEIPT })
+  const [titleDoc, setTitleDoc] = useState<DocText>(makeDocText('', { fontSize: 22, bold: true }))
   const [seed, setSeed] = useState('')
   const { saving, archive } = useArchivePaper(onSaved, onClose)
 
   if (open && !seed) {
     setSeed('open')
     setD({ ...EMPTY_RECEIPT, dateText: formatDateDMY(new Date()) })
+    setTitleDoc(makeDocText('', { fontSize: 22, bold: true }))
   }
   if (!open && seed) setSeed('')
 
   const set = (k: keyof ReceiptData) => (v: string) => setD((prev) => ({ ...prev, [k]: v }))
+  const data: ReceiptData = { ...d, titleStyle: docTextToJson(titleDoc) }
 
   const saveArchive = () =>
     archive({
@@ -2089,7 +2353,7 @@ export function ReceiptDialog({
       category: 'المستحقات',
       content: `وصل استلام: ${d.name || '—'} (${d.job || '—'}) استلم مبلغاً قدره ${d.amount || '—'} بعنوان ${d.reason || '—'} بتاريخ ${d.dateText || '—'}.`,
       systemForm: 'receipt',
-      params: { ...d },
+      params: { ...data },
     })
 
   return (
@@ -2106,10 +2370,17 @@ export function ReceiptDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           <div className="space-y-3 doc-print-hide lg:order-1">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
+            <DocTextEditor
+              label="عنوان الوثيقة"
+              value={titleDoc}
+              onChange={setTitleDoc}
+              fallbackHint={RECEIPT_TITLE_FALLBACK}
+            />
             <div className="rounded-xl bg-(--club-light) border border-(--club)/15 p-3 flex items-start gap-2">
               <Info className="h-4 w-4 text-(--club) shrink-0 mt-0.5" />
               <p className="text-[11px] font-bold text-(--club-dark) leading-relaxed">
@@ -2131,13 +2402,14 @@ export function ReceiptDialog({
             <PrintArchiveButtons onPrint={() => window.print()} onArchive={saveArchive} saving={saving} />
           </div>
           <PreviewPane>
-            <ReceiptPaper data={d} printable={false} />
+            <ReceiptPaper data={data} printable={false} />
           </PreviewPane>
         </div>
       </DialogContent>
       {open && (
         <PrintPortal>
-          <ReceiptPaper data={d} />
+          <PrintPageSize size={data.paperSize} />
+          <ReceiptPaper data={data} />
         </PrintPortal>
       )}
     </Dialog>
@@ -2161,7 +2433,10 @@ export function SystemPaperView({ form, params }: { form: string; params?: Recor
             dateText: p.dateText ?? '',
             recipient: p.recipient ?? '',
             subject: p.subject ?? '',
+            subjectStyle: p.subjectStyle ?? '',
             body: p.body ?? '',
+            bodyBlocks: p.bodyBlocks ?? '',
+            paperSize: paperSizeFromParams(params),
           }}
         />
       )
@@ -2407,8 +2682,9 @@ export function AdminPaperLibrarySection({
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground mb-3">
-          كل النماذج تُطبع بترويسة النادي الرسمية وبالإمضاءات التي تحددها إدارة النادي — تحرير بمعاينة حية، طباعة A4،
-          وأرشفة في مكتب النادي.
+          كل النماذج تُطبع بترويسة النادي الرسمية وبالإمضاءات التي تحددها إدارة النادي — وعند التعديل: محاذاة وضبط الأسطر،
+          عنوان الوثيقة، ترتيب النصوص يدوياً، سطر جديد في نفس النص، حجم الكتابة والعريض والنقاط لكل نص، وحجم الورقة A4/A5،
+          مع معاينة حية وأرشفة في مكتب النادي.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto nice-scroll p-0.5">
           {cards.map((c) => (

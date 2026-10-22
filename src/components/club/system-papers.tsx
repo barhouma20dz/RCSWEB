@@ -47,6 +47,24 @@ import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import type { EnrollmentItem, BranchWithAccount } from './types'
 import { ClubLetterhead, PaperWatermark, useAccentColor, seasonLabel, SignatureStrip } from './letterhead-settings'
+import {
+  DocBlocksEditor,
+  DocBlocksView,
+  DocTextEditor,
+  PaperSizeSelector,
+  PrintPageSize,
+  blocksFromJson,
+  blocksToPlain,
+  blocksToJson,
+  docTextFromJson,
+  docTextToJson,
+  makeBlock,
+  makeDocText,
+  paperWidthClass,
+  type DocBlock,
+  type DocText,
+  type PaperSize,
+} from './doc-blocks'
 
 // إعادة تصدير الأدوات المشتركة (توافقاً مع بقية الملفات)
 export { seasonLabel }
@@ -82,6 +100,7 @@ export interface AuthorizationData {
   childBirth: string // تاريخ ميلاد الابن(ة)
   sport: string // الرياضة الممارسة
   childGender: 'male' | 'female'
+  paperSize?: PaperSize // حجم الورقة A4 / A5
 }
 
 export const EMPTY_AUTHORIZATION: AuthorizationData = {
@@ -164,7 +183,7 @@ export function ParentAuthorizationPaper({
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full max-w-[680px] p-6 sm:p-9 ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(d.paperSize ?? 'A4')} ${d.paperSize === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -284,6 +303,8 @@ export function ParentAuthorizationDialog({
   const set = (k: keyof AuthorizationData) => (v: string) =>
     setD((prev) => ({ ...prev, [k]: v }))
 
+  const paperSize: PaperSize = d.paperSize ?? 'A4'
+
   const saveArchive = async () => {
     setSaving(true)
     try {
@@ -342,6 +363,9 @@ export function ParentAuthorizationDialog({
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           {/* نموذج التحرير */}
           <div className="space-y-3 doc-print-hide lg:order-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <PaperSizeSelector value={paperSize} onChange={(s) => setD((prev) => ({ ...prev, paperSize: s }))} />
+            </div>
             <div className="rounded-xl bg-(--club-light) border border-(--club)/15 p-3 flex items-start gap-2">
               <Info className="h-4 w-4 text-(--club) shrink-0 mt-0.5" />
               <p className="text-[11px] font-bold text-(--club-dark) leading-relaxed">
@@ -422,6 +446,7 @@ export function ParentAuthorizationDialog({
       </DialogContent>
       {open && (
         <PrintPortal>
+          <PrintPageSize size={paperSize} />
           <ParentAuthorizationPaper data={d} />
         </PrintPortal>
       )}
@@ -442,7 +467,13 @@ export interface TrainingRequestData {
   dateText: string
   recipient: string
   subject: string
+  /** تنسيق الموضوع — JSON DocText */
+  subjectStyle: string
+  /** النص العادي — للتوافق والأرشفة القديمة */
   body: string
+  /** فقرات نص الطلب المنسقة — JSON DocBlock[] */
+  bodyBlocks: string
+  paperSize: PaperSize
 }
 
 export function TrainingRequestPaper({
@@ -453,9 +484,14 @@ export function TrainingRequestPaper({
   printable?: boolean
 }) {
   const accent = useAccentColor()
+  const subjectDoc = docTextFromJson(
+    data.subjectStyle,
+    makeDocText(data.subject, { fontSize: 15, bold: true, align: 'center' })
+  )
+  const blocks = blocksFromJson(data.bodyBlocks, data.body)
   return (
     <div
-      className={`doc-paper mx-auto w-full max-w-[680px] p-6 sm:p-9 ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(data.paperSize)} ${data.paperSize === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -476,13 +512,18 @@ export function TrainingRequestPaper({
 
         <p className="mt-4 text-[13.5px] font-black">إلى السيد: {data.recipient || '.....................'}</p>
 
-        <p className="mt-4 text-center text-[15px] font-black underline decoration-2 underline-offset-8">
-          الموضوع: {data.subject || '.....................'}
+        <p
+          className="mt-4 underline decoration-2 underline-offset-8"
+          style={{
+            textAlign: subjectDoc.align,
+            fontSize: `${subjectDoc.fontSize}px`,
+            fontWeight: subjectDoc.bold ? 900 : 600,
+          }}
+        >
+          الموضوع: {subjectDoc.text.trim() || '.....................'}
         </p>
 
-        <div className="mt-5 min-h-[190px] whitespace-pre-wrap text-[13.5px] font-medium leading-[2.1] text-neutral-800">
-          {data.body}
-        </div>
+        <DocBlocksView blocks={blocks} className="mt-5 min-h-[190px] text-neutral-800" />
 
         <p className="mt-2 text-[13.5px] font-bold leading-[2]">
           وفي انتظار استجابتكم، تقبلوا فائق عبارات الاحترام والتقدير.
@@ -548,10 +589,10 @@ export function TrainingRequestDialog({
   const [refNumber, setRefNumber] = useState('')
   const [dateText, setDateText] = useState('')
   const [recipient, setRecipient] = useState('رئيس المجلس الشعبي البلدي لبلدية سعيدة')
-  const [subject, setSubject] = useState('طلب حصة تدريبية في ملعب الإخوة براسي')
+  const [subjectDoc, setSubjectDoc] = useState<DocText>(makeDocText('طلب حصة تدريبية في ملعب الإخوة براسي', { fontSize: 15, bold: true }))
   const [rows, setRows] = useState<SlotRow[]>(DEFAULT_ROWS)
-  const [manual, setManual] = useState(false)
-  const [manualBody, setManualBody] = useState('')
+  const [blocks, setBlocks] = useState<DocBlock[]>([makeBlock('')])
+  const [paperSize, setPaperSize] = useState<PaperSize>('A4')
   const [saving, setSaving] = useState(false)
   const [seed, setSeed] = useState('')
 
@@ -561,10 +602,10 @@ export function TrainingRequestDialog({
     setRefNumber(`${String(requestCount + 1).padStart(2, '0')}/ن.ر.ه.ر.س/${new Date().getFullYear()}`)
     setDateText(formatDateDMY(new Date()))
     setRecipient('رئيس المجلس الشعبي البلدي لبلدية سعيدة')
-    setSubject('طلب حصة تدريبية في ملعب الإخوة براسي')
+    setSubjectDoc(makeDocText('طلب حصة تدريبية في ملعب الإخوة براسي', { fontSize: 15, bold: true }))
     setRows(DEFAULT_ROWS.map((r) => ({ ...r })))
-    setManual(false)
-    setManualBody('')
+    setBlocks([makeBlock(composeBody(DEFAULT_ROWS, 'رئيس المجلس الشعبي البلدي لبلدية سعيدة'))])
+    setPaperSize('A4')
   }
   if (!open && seed) setSeed('')
 
@@ -573,8 +614,11 @@ export function TrainingRequestDialog({
     refNumber,
     dateText,
     recipient,
-    subject,
-    body: manual && manualBody.trim() ? manualBody.trim() : composed,
+    subject: subjectDoc.text,
+    subjectStyle: docTextToJson(subjectDoc),
+    body: blocksToPlain(blocks) || composed,
+    bodyBlocks: blocksToJson(blocks),
+    paperSize,
   }
 
   const setRow = (i: number, k: keyof SlotRow) => (v: string) =>
@@ -592,7 +636,7 @@ export function TrainingRequestDialog({
           action: 'create',
           data: {
             refNumber,
-            title: subject || 'طلب حصة تدريبية',
+            title: subjectDoc.text || 'طلب حصة تدريبية',
             type: 'request',
             category: 'طلبات الملاعب',
             content: data.body,
@@ -608,8 +652,11 @@ export function TrainingRequestDialog({
                 refNumber,
                 dateText,
                 recipient,
-                subject,
+                subject: subjectDoc.text,
+                subjectStyle: docTextToJson(subjectDoc),
                 body: data.body,
+                bodyBlocks: blocksToJson(blocks),
+                paperSize,
               },
             }),
             visibleToBranch: false,
@@ -644,6 +691,9 @@ export function TrainingRequestDialog({
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
           {/* نموذج التحرير */}
           <div className="space-y-3 doc-print-hide">
+            <div className="flex flex-wrap items-center gap-2">
+              <PaperSizeSelector value={paperSize} onChange={setPaperSize} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>الرقم</Label>
@@ -658,10 +708,12 @@ export function TrainingRequestDialog({
               <Label>إلى السيد</Label>
               <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label>الموضوع</Label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </div>
+            <DocTextEditor
+              label="الموضوع — عنوان الوثيقة"
+              value={subjectDoc}
+              onChange={setSubjectDoc}
+              hint="Aligner / حجم الكتابة / عريض"
+            />
 
             <SeparatorLine />
 
@@ -713,16 +765,13 @@ export function TrainingRequestDialog({
               ))}
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-(--border) bg-muted/40 p-3">
-              <div>
-                <div className="text-xs font-black text-(--club-dark)">تحرير النص يدوياً</div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">لتعديل الصياغة الرسمية بحرية كاملة</p>
-              </div>
-              <Switch checked={manual} onCheckedChange={setManual} />
-            </div>
-            {manual && (
-              <Textarea value={manualBody} onChange={(e) => setManualBody(e.target.value)} rows={6} placeholder="اكتب نص الطلب…" />
-            )}
+            <DocBlocksEditor
+              label="نص الطلب — قابل للترتيب والتنسيق"
+              blocks={blocks}
+              onChange={setBlocks}
+              hint="Aligner / Justifier + حجم الكتابة + عريض + نقاط + ترتيب يدوي، وEnter لسطر جديد في نفس النص"
+              addLabel="إضافة نص جديد"
+            />
 
             <div className="flex flex-wrap gap-2 pt-1">
               <Button onClick={() => window.print()} className="flex-1 bg-(--club) hover:bg-(--club)/90 text-white font-bold">
@@ -745,6 +794,7 @@ export function TrainingRequestDialog({
       </DialogContent>
       {open && (
         <PrintPortal>
+          <PrintPageSize size={paperSize} />
           <TrainingRequestPaper data={data} />
         </PrintPortal>
       )}
