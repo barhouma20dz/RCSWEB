@@ -8,10 +8,17 @@ async function main() {
   })
 
   const sql = readFileSync(process.env.SQL_FILE || '/tmp/turso-schema.sql', 'utf-8')
+  // أسطر التعليق (-- و/* */) قد تتخلل كل أمر — نزيلها من الداخل ثم نحتفظ بالأوامر الفعلية فقط
   const stmts = sql
     .split(/;\s*\n/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith('--') && !s.startsWith('/*'))
+    .map((chunk) =>
+      chunk
+        .split('\n')
+        .filter((line) => !line.trim().startsWith('--') && !line.trim().startsWith('/*'))
+        .join('\n')
+        .trim()
+    )
+    .filter((s) => s.length > 0)
 
   console.log(`تنفيذ ${stmts.length} أمر إنشاء...`)
   for (const stmt of stmts) {

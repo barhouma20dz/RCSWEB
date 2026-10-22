@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
-import { createClient } from '@libsql/client'
 import { copyFileSync, existsSync } from 'fs'
 import path from 'path'
 
@@ -40,12 +39,12 @@ function createDatabaseClient(): PrismaClient {
 
   // ===== 1) Turso — قاعدة دائمة على السحابة =====
   if (tursoUrl) {
-    const libsql = createClient({
-      url: tursoUrl,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    })
+    // إصدار @prisma/adapter-libsql ‏6.x يستقبل كائن الإعدادات نفسه ويُنشئ العميل داخلياً
     return new PrismaClient({
-      adapter: new PrismaLibSQL(libsql),
+      adapter: new PrismaLibSQL({
+        url: tursoUrl,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+      }),
       // سجلات الاستعلامات في بيئة التطوير فقط
       log: process.env.NODE_ENV === 'production' ? [] : ['query'],
     })

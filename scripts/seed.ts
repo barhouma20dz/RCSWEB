@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
-import { createClient } from '@libsql/client'
 import crypto from 'crypto'
 
 /**
@@ -10,8 +9,9 @@ import crypto from 'crypto'
 function makeClient(): PrismaClient {
   const tursoUrl = process.env.TURSO_DATABASE_URL
   if (tursoUrl) {
-    const libsql = createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
-    return new PrismaClient({ adapter: new PrismaLibSQL(libsql) })
+    // إصدار @prisma/adapter-libsql ‏6.x يستقبل كائن الإعدادات ويُنشئ العميل داخلياً
+    const adapter = new PrismaLibSQL({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+    return new PrismaClient({ adapter })
   }
   return new PrismaClient()
 }
