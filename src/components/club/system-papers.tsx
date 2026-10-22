@@ -46,7 +46,7 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import type { EnrollmentItem, BranchWithAccount } from './types'
-import { ClubLetterhead, PaperWatermark, useAccentColor, seasonLabel } from './letterhead-settings'
+import { ClubLetterhead, PaperWatermark, useAccentColor, seasonLabel, SignatureStrip } from './letterhead-settings'
 
 // إعادة تصدير الأدوات المشتركة (توافقاً مع بقية الملفات)
 export { seasonLabel }
@@ -494,10 +494,8 @@ export function TrainingRequestPaper({
             <span>الجمهورية الجزائرية</span>
             <span>جمعية الرائد الرياضي</span>
           </div>
-          <div className="text-center">
-            <div className="text-[13px] font-black underline">الرئيس</div>
-            <div className="mt-10 w-28 border-t border-dashed border-neutral-400" />
-          </div>
+          {/* الإمضاءات المفعّلة من إدارة النادي — تنطبق على جميع الوثائق والنماذج */}
+          <SignatureStrip keys={['president', 'branch']} variant="compact" />
         </footer>
       </div>
     </div>

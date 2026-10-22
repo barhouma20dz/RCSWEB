@@ -24,7 +24,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Settings2, RotateCcw, Palette } from 'lucide-react'
+import { Settings2, RotateCcw, Palette, PenLine } from 'lucide-react'
+
+// ==================================================================
+// الإمضاءات الموحدة — إدارة النادي هي من يحدد الإمضاءات
+// في جميع الوثائق والنماذج الرسمية
+// ==================================================================
+
+export type SignatureRoleKey = 'president' | 'branch' | 'municipality' | 'concerned'
+
+export interface SignatureRole {
+  /** هل يظهر هذا الإمضاء على الأوراق */
+  enabled: boolean
+  /** المسمى المعروض على الورقة — قابل للتعديل حسب الحاجة */
+  label: string
+  /** الاسم واللقب (اختياري — فارغ = خط منقط للتعبئة اليدوية بالإمضاء) */
+  name: string
+}
+
+export const SIGNATURE_ROLES: { key: SignatureRoleKey; hint: string }[] = [
+  { key: 'president', hint: 'يوقّع المراسلات الرسمية ويضع تأشيرته على العقود والوثائق' },
+  { key: 'branch', hint: 'يوقّع وثائق فرعه الرياضية عند تفويضه بذلك' },
+  { key: 'municipality', hint: 'تأشيرة مصالح البلدية على الوثائق الموجهة إليها أو المصادق عليها' },
+  { key: 'concerned', hint: 'إمضاء المعني بالأمر (العامل، ولي الأمر، المستلم…)' },
+]
+
+export const DEFAULT_SIGNATURES: Record<SignatureRoleKey, SignatureRole> = {
+  president: { enabled: true, label: 'رئيس النادي', name: '' },
+  branch: { enabled: false, label: 'رئيس الفرع', name: '' },
+  municipality: { enabled: false, label: 'مصالح البلدية', name: '' },
+  concerned: { enabled: true, label: 'المعني بالأمر', name: '' },
+}
 
 /** الموسم الرياضي الحالي (يبدأ من جويلية) — مثل: 2026/2027 */
 export function seasonLabel(date = new Date()): string {
@@ -48,6 +78,8 @@ export interface LetterheadSettings {
   watermark: boolean
   showSeason: boolean
   seasonText: string
+  /** الإمضاءات المفعّلة ومسمياتها — تُطبّق على جميع الوثائق والنماذج */
+  signatures: Record<SignatureRoleKey, SignatureRole>
 }
 
 export const DEFAULT_LETTERHEAD: LetterheadSettings = {
@@ -62,6 +94,7 @@ export const DEFAULT_LETTERHEAD: LetterheadSettings = {
   watermark: true,
   showSeason: true,
   seasonText: '',
+  signatures: DEFAULT_SIGNATURES,
 }
 
 const LS_KEY = 'rcs-club-letterhead-v1'
@@ -74,9 +107,14 @@ function readSettings(): LetterheadSettings {
   if (cache) return cache
   try {
     const raw = window.localStorage.getItem(LS_KEY)
-    cache = raw ? { ...DEFAULT_LETTERHEAD, ...(JSON.parse(raw) as Partial<LetterheadSettings>) } : DEFAULT_LETTERHEAD
+    const parsed = raw ? (JSON.parse(raw) as Partial<LetterheadSettings>) : {}
+    cache = {
+      ...DEFAULT_LETTERHEAD,
+      ...parsed,
+      signatures: { ...DEFAULT_SIGNATURES, ...(parsed.signatures ?? {}) },
+    }
   } catch {
-    cache = DEFAULT_LETTERHEAD
+    cache = { ...DEFAULT_LETTERHEAD }
   }
   return cache
 }
@@ -164,6 +202,70 @@ export function ClubLetterhead({ compact = false }: { compact?: boolean }) {
   )
 }
 
+// ==================================================================
+// شريط الإمضاءات الموحد — يُبنى من إعدادات الإدارة
+// ==================================================================
+
+/**
+ * يعرض أعمدة/صناديق الإمضاءات المفعّلة من نافدة اختيار الإمضاءات.
+ * - variant="compact": أعمدة إمضاء (المراسلات، الوصولات، الجداول).
+ * - variant="box": صناديق مؤطرة (تأشيرات العقود).
+ * الإمضاءات غير المفعّلة لا تُطبع — إدارة النادي هي من يحددها.
+ */
+export function SignatureStrip({
+  keys,
+  variant = 'compact',
+  titlePrefix,
+  className = '',
+}: {
+  keys: SignatureRoleKey[]
+  variant?: 'compact' | 'box'
+  /** بادئة عنوان الصندوق — مثال: «تأشيرة» */
+  titlePrefix?: string
+  className?: string
+}) {
+  const [s] = useLetterheadSettings()
+  const active = keys.filter((k) => s.signatures[k]?.enabled)
+  if (active.length === 0) return null
+
+  if (variant === 'box') {
+    const grid = active.length === 1 ? 'grid-cols-1' : active.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+    return (
+      <div className={`grid gap-3 ${grid} ${className}`}>
+        {active.map((k) => {
+          const r = s.signatures[k]
+          return (
+            <div key={k} className="rounded-lg border border-neutral-400/60 p-3 text-center">
+              <div className="text-[11.5px] font-black underline">
+                {titlePrefix ? `${titlePrefix} ${r.label}` : r.label}
+              </div>
+              <div className="mt-1 text-[10.5px] font-bold text-neutral-500">
+                الاسم واللقب: {r.name || '..................'}
+              </div>
+              <div className="mt-8 text-[10px] font-bold text-neutral-500">الإمضاء والختم</div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className={`flex flex-wrap items-end gap-8 ${className}`}>
+      {active.map((k) => {
+        const r = s.signatures[k]
+        return (
+          <div key={k} className="text-center">
+            <div className="text-[13px] font-black underline">{r.name || '..................'}</div>
+            {r.label.trim() && <div className="text-[10.5px] font-bold text-neutral-500">{r.label}</div>}
+            <div className="mt-10 w-28 border-t border-dashed border-neutral-400" />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /** لون الهوية الحالي — للأوراق التي تلوّن إطارها وعناوينها بنفس الترويسة */
 export function useAccentColor(): string {
   const [s] = useLetterheadSettings()
@@ -188,6 +290,103 @@ export function PaperWatermark({ size = '55%' }: { size?: string }) {
       className="doc-watermark pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-auto -translate-x-1/2 -translate-y-1/2 opacity-[0.04] select-none"
       style={{ height: size }}
     />
+  )
+}
+
+// ==================================================================
+// نافذة اختيار الإمضاءات (إعدادات عامة لجميع الوثائق والنماذج)
+// ==================================================================
+
+export function SignatureSettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [s, setS] = useLetterheadSettings()
+  if (!open) return null
+
+  const setRole = (k: SignatureRoleKey, patch: Partial<SignatureRole>) =>
+    setS({ ...s, signatures: { ...s.signatures, [k]: { ...s.signatures[k], ...patch } } })
+  const anyEnabled = (Object.keys(s.signatures) as SignatureRoleKey[]).some((k) => s.signatures[k].enabled)
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto nice-scroll">
+        <DialogHeader className="doc-print-hide">
+          <DialogTitle className="flex items-center gap-2">
+            <PenLine className="h-5 w-5" style={{ color: s.accentColor }} />
+            اختيار الإمضاءات — نافدة الإدارة
+          </DialogTitle>
+          <DialogDescription>
+            إدارة النادي هي من تحدد الإمضاءات في جميع الوثائق والنماذج: فعّل الإمضاءات المطلوبة وعدّل مسمياتها وأسماء
+            الموقّعين — تُطبَّق فوراً على كل الأوراق (العقود، المراسلات، الوصولات، الجداول) وتُحفظ في هذا المتصفح.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
+          <div className="space-y-2.5 doc-print-hide">
+            {SIGNATURE_ROLES.map(({ key, hint }) => {
+              const r = s.signatures[key]
+              return (
+                <div
+                  key={key}
+                  className={`rounded-xl border p-3 transition-colors ${
+                    r.enabled ? 'border-(--club)/40 bg-(--club-light)/40' : 'border-(--border) bg-muted/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-black">{r.label}</div>
+                      <p className="text-[10.5px] text-muted-foreground">{hint}</p>
+                    </div>
+                    <Switch
+                      checked={r.enabled}
+                      onCheckedChange={(v) => setRole(key, { enabled: v })}
+                      aria-label={`تفعيل إمضاء ${r.label}`}
+                    />
+                  </div>
+                  {r.enabled && (
+                    <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Input
+                        value={r.label}
+                        onChange={(e) => setRole(key, { label: e.target.value })}
+                        placeholder="المسمى المعروض على الورقة"
+                        aria-label="مسمى الإمضاء"
+                      />
+                      <Input
+                        value={r.name}
+                        onChange={(e) => setRole(key, { name: e.target.value })}
+                        placeholder="الاسم واللقب (اختياري — فارغ = إمضاء يدوي)"
+                        aria-label="اسم الموقّع"
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            <Button variant="outline" onClick={resetLetterheadSettings} className="font-bold">
+              <RotateCcw className="h-4 w-4 ml-1" /> استعادة الإمضاءات الافتراضية
+            </Button>
+          </div>
+
+          {/* معاينة حية */}
+          <div className="rounded-xl bg-muted/50 p-3">
+            <div className="mb-2 text-[11px] font-black text-muted-foreground text-center">
+              معاينة — صندوق الإمضاء كما سيطبع
+            </div>
+            <div className="rounded-lg bg-white p-4 shadow-sm" dir="rtl">
+              <SignatureStrip
+                keys={['president', 'branch', 'municipality', 'concerned']}
+                variant="box"
+              />
+              {!anyEnabled && (
+                <p className="py-4 text-center text-[11px] text-neutral-400">لم تُفعّل أي إمضاء بعد</p>
+              )}
+            </div>
+            <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground text-center">
+              في العقود تظهر الإضافية كتأشيرات أسفل الطرفين، وفي المراسلات كأعمدة إمضاء أسفل الورقة.
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -350,6 +549,21 @@ export function LetterheadSettingsDialog({ open, onClose }: { open: boolean; onC
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** زر عائم صغير يفتح نافذة اختيار الإمضاءات — يُستخدم داخل نوافذ الأوراق */
+export function SignaturesQuickSettings({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="doc-print-hide inline-flex items-center gap-1.5 rounded-full border border-(--border) bg-muted/50 px-3 py-1 text-[10.5px] font-bold text-muted-foreground transition-colors hover:border-(--club)/50 hover:text-(--club)"
+      title="اختيار الإمضاءات — تُطبَّق على جميع الوثائق والنماذج"
+    >
+      <PenLine className="h-3 w-3" />
+      اختيار الإمضاءات
+    </button>
   )
 }
 
