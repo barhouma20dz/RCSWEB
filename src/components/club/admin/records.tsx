@@ -71,6 +71,13 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { DocumentPaper, parseDesign, type DocumentDesign } from '../document-paper'
+import {
+  SystemFormsSection,
+  ParentAuthorizationPaper,
+  TrainingRequestPaper,
+  parseSystemDesign,
+  authFromParams,
+} from '../system-papers'
 import type {
   AdminData,
   ClubDocumentItem,
@@ -1191,6 +1198,14 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
               استيراد نموذج
             </Button>
           </div>
+
+          {/* النماذج النظامية الجاهزة: تصريح أبوي + طلب حصة تدريبية */}
+          <SystemFormsSection
+            enrollments={data.enrollments}
+            branches={data.branches}
+            requestCount={documents.filter((x) => x.category === 'طلبات الملاعب').length}
+            onSaved={reload}
+          />
 
           {templates.length === 0 ? (
             <div className="rounded-2xl border border-(--border) bg-white p-10 text-center text-muted-foreground">
@@ -2346,7 +2361,27 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
           </DialogHeader>
           {viewDoc && (
             <>
-              <DocumentPaper doc={viewDoc} />
+              {(() => {
+                const sys = parseSystemDesign(viewDoc.design)
+                if (sys?.systemForm === 'parent-authorization') {
+                  return <ParentAuthorizationPaper data={authFromParams(sys.params)} />
+                }
+                if (sys?.systemForm === 'training-request') {
+                  const p = sys.params ?? {}
+                  return (
+                    <TrainingRequestPaper
+                      data={{
+                        refNumber: p.refNumber ?? viewDoc.refNumber,
+                        dateText: p.dateText ?? '',
+                        recipient: p.recipient ?? '',
+                        subject: p.subject ?? viewDoc.title,
+                        body: p.body ?? viewDoc.content,
+                      }}
+                    />
+                  )
+                }
+                return <DocumentPaper doc={viewDoc} />
+              })()}
               <div className="doc-print-hide flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setViewDoc(null)}>
                   إغلاق
