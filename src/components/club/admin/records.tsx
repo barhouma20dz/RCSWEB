@@ -71,13 +71,8 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { DocumentPaper, parseDesign, type DocumentDesign } from '../document-paper'
-import {
-  SystemFormsSection,
-  ParentAuthorizationPaper,
-  TrainingRequestPaper,
-  parseSystemDesign,
-  authFromParams,
-} from '../system-papers'
+import { parseSystemDesign } from '../system-papers'
+import { AdminPaperLibrarySection, SystemPaperView } from '../admin-papers'
 import type {
   AdminData,
   ClubDocumentItem,
@@ -1199,8 +1194,8 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
             </Button>
           </div>
 
-          {/* النماذج النظامية الجاهزة: تصريح أبوي + طلب حصة تدريبية */}
-          <SystemFormsSection
+          {/* النماذج النظامية والإدارية الجاهزة (10 نماذج + ترويسة قابلة للتخصيص) */}
+          <AdminPaperLibrarySection
             enrollments={data.enrollments}
             branches={data.branches}
             requestCount={documents.filter((x) => x.category === 'طلبات الملاعب').length}
@@ -2363,22 +2358,8 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
             <>
               {(() => {
                 const sys = parseSystemDesign(viewDoc.design)
-                if (sys?.systemForm === 'parent-authorization') {
-                  return <ParentAuthorizationPaper data={authFromParams(sys.params)} />
-                }
-                if (sys?.systemForm === 'training-request') {
-                  const p = sys.params ?? {}
-                  return (
-                    <TrainingRequestPaper
-                      data={{
-                        refNumber: p.refNumber ?? viewDoc.refNumber,
-                        dateText: p.dateText ?? '',
-                        recipient: p.recipient ?? '',
-                        subject: p.subject ?? viewDoc.title,
-                        body: p.body ?? viewDoc.content,
-                      }}
-                    />
-                  )
+                if (sys) {
+                  return <SystemPaperView form={sys.systemForm} params={sys.params} />
                 }
                 return <DocumentPaper doc={viewDoc} />
               })()}

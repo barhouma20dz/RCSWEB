@@ -46,6 +46,10 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import type { EnrollmentItem, BranchWithAccount } from './types'
+import { ClubLetterhead, PaperWatermark, useAccentColor, seasonLabel } from './letterhead-settings'
+
+// إعادة تصدير الأدوات المشتركة (توافقاً مع بقية الملفات)
+export { seasonLabel }
 
 // ==================================================================
 // أدوات مشتركة
@@ -67,12 +71,6 @@ export function PrintPortal({ children }: { children: React.ReactNode }) {
 }
 
 const subscribeNoop = () => () => {}
-
-/** الموسم الرياضي الحالي (يبدأ من جويلية) — مثل: 2026/2027 */
-export function seasonLabel(date = new Date()): string {
-  const y = date.getFullYear()
-  return date.getMonth() + 1 >= 7 ? `${y}/${y + 1}` : `${y - 1}/${y}`
-}
 
 export interface AuthorizationData {
   guardianName: string // اسم الولي (أسماؤه السبعة)
@@ -104,12 +102,13 @@ interface SystemDesign {
 }
 
 /** يستخرج توقيع النموذج النظامي من تصميم وثيقة مؤرشفة (إن وجد) */
-export function parseSystemDesign(json: string): SystemDesign | null {
+export function parseSystemDesign(json: string): { systemForm: string; params: Record<string, string> } | null {
   if (!json) return null
   try {
     const d = JSON.parse(json) as SystemDesign
     if (d && typeof d.systemForm === 'string' && d.systemForm) {
-      return { systemForm: d.systemForm, params: d.params ?? {} }
+      const form: string = d.systemForm
+      return { systemForm: form, params: d.params ?? {} }
     }
     return null
   } catch {
@@ -148,33 +147,7 @@ function FieldLine({ label, value }: { label: string; value: string }) {
   )
 }
 
-/** الترويسة الرسمية للنادي — عربية وفرنسية مع الشعارين */
-export function ClubLetterhead({ compact = false }: { compact?: boolean }) {
-  return (
-    <header className="flex items-center justify-between gap-3 border-b-[3px] border-(--club) pb-2.5">
-      <img
-        src="/images/logo.png"
-        alt="شعار النادي"
-        className={`${compact ? 'h-9 w-9' : 'h-14 w-14'} object-contain shrink-0`}
-      />
-      <div className="min-w-0 flex-1 text-center leading-tight">
-        <div className={`${compact ? 'text-[10.5px]' : 'text-[13.5px]'} font-black text-(--club-dark)`}>
-          جمعية الرائد الرياضي الهوايي المتعدد الرياضات — الرائد — بلدية سعيدة
-        </div>
-        {!compact && (
-          <div className="mt-0.5 text-[11px] font-black tracking-wide text-neutral-600" dir="ltr">
-            CLUB SPORTIF AMATEUR OMNISPORTS — RAYED APC DE SAÏDA
-          </div>
-        )}
-      </div>
-      <img
-        src="/images/logo.png"
-        alt="شعار النادي"
-        className={`${compact ? 'h-9 w-9' : 'h-14 w-14'} object-contain shrink-0`}
-      />
-    </header>
-  )
-}
+// ClubLetterhead نُقلت إلى letterhead-settings.tsx (ترويسة موحدة قابلة للتخصيص) وتُستورد أعلاه.
 
 // ==================================================================
 // 1) ورقة تصريح أبوي
@@ -188,21 +161,17 @@ export function ParentAuthorizationPaper({
   printable?: boolean
 }) {
   const d = data
+  const accent = useAccentColor()
   return (
     <div
       className={`doc-paper mx-auto w-full max-w-[680px] p-6 sm:p-9 ${printable ? 'doc-print-area' : ''}`}
-      style={{ ['--doc-accent' as string]: '#1d2f5e' }}
+      style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
       <div className="doc-paper-frame" />
 
       {/* علامة مائية خفيفة */}
-      <img
-        src="/images/logo-full.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-auto -translate-x-1/2 -translate-y-1/2 opacity-[0.04] select-none"
-      />
+      <PaperWatermark />
 
       <div className="relative px-1 sm:px-2">
         <ClubLetterhead compact />
@@ -483,19 +452,15 @@ export function TrainingRequestPaper({
   data: TrainingRequestData
   printable?: boolean
 }) {
+  const accent = useAccentColor()
   return (
     <div
       className={`doc-paper mx-auto w-full max-w-[680px] p-6 sm:p-9 ${printable ? 'doc-print-area' : ''}`}
-      style={{ ['--doc-accent' as string]: '#1d2f5e' }}
+      style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
       <div className="doc-paper-frame" />
-      <img
-        src="/images/logo-full.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-auto -translate-x-1/2 -translate-y-1/2 opacity-[0.04] select-none"
-      />
+      <PaperWatermark />
 
       <div className="relative px-1 sm:px-2">
         <ClubLetterhead />
