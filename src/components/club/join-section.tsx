@@ -33,6 +33,8 @@ import {
   Home,
   Info,
   ShieldCheck,
+  FileSignature,
+  Printer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +46,7 @@ import { useSiteSettings, useSectionTexts } from './site-store'
 import { formatDateDMY } from '@/lib/date-format'
 import { useToast } from '@/hooks/use-toast'
 import type { BranchSummary } from './types'
+import { ParentAuthorizationDialog, type AuthorizationData } from './system-papers'
 
 /** رموز الفروع المعروضة على البطاقات */
 const BRANCH_CODES: Record<string, string> = {
@@ -242,6 +245,8 @@ export function JoinSection({
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [doneBranch, setDoneBranch] = useState('')
+  const [doneAuth, setDoneAuth] = useState<Partial<AuthorizationData> | null>(null)
+  const [authOpen, setAuthOpen] = useState(false)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [gender, setGender] = useState<'male' | 'female' | ''>('')
@@ -320,6 +325,19 @@ export function JoinSection({
       if (!res.ok) throw new Error(d.error || 'خطأ غير متوقع')
       toast({ title: 'تم الإرسال بنجاح', description: d.message })
       setDoneBranch(selectedBranch?.name ?? '')
+      // تصريح أبوي جاهز بمعلومات الولي والابن للقاصرين (تُطبع الحقول الناقصة بخطوط منقطة)
+      setDoneAuth(
+        isMinor
+          ? {
+              guardianName: guardianName,
+              address: address,
+              childName: `${firstName} ${lastName}`.trim(),
+              childBirth: birthDisplay,
+              sport: selectedBranch?.name ?? '',
+              childGender: gender === 'female' ? 'female' : 'male',
+            }
+          : null
+      )
       setDone(true)
       reset()
     } catch (err) {
@@ -397,7 +415,24 @@ export function JoinSection({
                   </p>
                 )}
                 <p className="text-muted-foreground leading-relaxed mb-6">{t('join.doneBody')}</p>
-                <Button onClick={() => setDone(false)} variant="outline" className="font-bold">
+                {doneAuth && (
+                  <div className="mb-6 rounded-2xl border border-(--club)/25 bg-(--club-light) p-4 max-w-sm mx-auto">
+                    <div className="flex items-center justify-center gap-2 font-black text-(--club-dark) text-sm">
+                      <FileSignature className="h-4 w-4 text-(--club)" />
+                      تصريح أبوي جاهز للطباعة
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                      ورقة رسمية بترويسة النادي معبأة بمعلوماتك — أكمل الحقول الناقصة واطبعها ووقّعها.
+                    </p>
+                    <Button
+                      onClick={() => setAuthOpen(true)}
+                      className="mt-3 w-full bg-(--club) hover:bg-(--club)/90 text-white font-bold"
+                    >
+                      <Printer className="h-4 w-4 ml-1" /> فتح تصريح أبوي وطباعته
+                    </Button>
+                  </div>
+                )}
+                <Button onClick={() => { setDone(false); setDoneAuth(null) }} variant="outline" className="font-bold">
                   {t('join.again')}
                 </Button>
               </div>
@@ -756,6 +791,14 @@ export function JoinSection({
           <TrackCard />
         </div>
       </div>
+          {/* نافذة تصريح أبوي للقاصرين — تُفتح من شاشة النجاح */}
+      <ParentAuthorizationDialog
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        initial={doneAuth ?? {}}
+        canArchive={false}
+        publicMode
+      />
     </section>
   )
 }

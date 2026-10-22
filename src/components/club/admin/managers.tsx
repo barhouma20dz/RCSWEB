@@ -23,6 +23,7 @@ import {
   UserCheck,
   Eye,
   EyeOff,
+  FileSignature,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +47,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
+import { ParentAuthorizationDialog, authorizationFromEnrollment } from '../system-papers'
 import { BranchIcon } from '../icon-map'
 import type {
   AdminData,
@@ -759,6 +761,7 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
   const [branchFilter, setBranchFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [del, setDel] = useState<(EnrollmentItem & { branch: { name: string; color: string; slug: string } }) | null>(null)
+  const [authFor, setAuthFor] = useState<(EnrollmentItem & { branch: { name: string; color: string; slug: string } }) | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
   const filtered = data.enrollments.filter(
@@ -848,6 +851,18 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
+                {isMinor && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAuthFor(e)}
+                    title="إصدار تصريح أبوي معبأ بمعلومات الولي والابن"
+                    className="font-bold border-(--club)/30 text-(--club) hover:bg-(--club-light)"
+                  >
+                    <FileSignature className="h-4 w-4" />
+                    تصريح أبوي
+                  </Button>
+                )}
                 {e.status === 'pending' && (
                   <>
                     <Button
@@ -882,6 +897,15 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
       </div>
 
       <AConfirm open={!!del} onClose={() => setDel(null)} onConfirm={remove} name={del?.fullName} />
+
+      {/* تصريح أبوي معبأ من بيانات الطلب */}
+      <ParentAuthorizationDialog
+        open={!!authFor}
+        onClose={() => setAuthFor(null)}
+        initial={authFor ? authorizationFromEnrollment(authFor, authFor.branch?.name || '') : {}}
+        canArchive
+        onSaved={reload}
+      />
     </div>
   )
 }

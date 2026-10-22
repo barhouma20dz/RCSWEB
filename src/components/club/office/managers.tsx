@@ -25,6 +25,7 @@ import {
   PlayCircle,
   Clapperboard,
   KeyRound,
+  FileSignature,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,6 +48,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
+import { ParentAuthorizationDialog, authorizationFromEnrollment } from '../system-papers'
 import { MatchRow, GalleryGrid } from '../branches'
 import type { OfficeData, NewsItem, PlayerItem, MatchItem, TrainingItem, GalleryImage, StandingItem, VideoItem } from '../types'
 
@@ -470,6 +472,7 @@ export function EnrollmentsManager({ data, reload }: Office) {
   const { toast } = useToast()
   const [busy, setBusy] = useState<string | null>(null)
   const [del, setDel] = useState<(typeof data.enrollments)[number] | null>(null)
+  const [authFor, setAuthFor] = useState<(typeof data.enrollments)[number] | null>(null)
 
   const setStatus = async (id: string, status: 'accepted' | 'rejected') => {
     setBusy(id)
@@ -536,6 +539,18 @@ export function EnrollmentsManager({ data, reload }: Office) {
           )}
           {e.note && <p className="text-xs text-muted-foreground mt-2 bg-(--club-light) rounded-lg px-3 py-2">{e.note}</p>}
         </div>
+        {isMinor && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAuthFor(e)}
+            title="إصدار تصريح أبوي معبأ بمعلومات الولي والابن"
+            className="font-bold border-(--club)/30 text-(--club) hover:bg-(--club-light) shrink-0"
+          >
+            <FileSignature className="ml-1 h-3.5 w-3.5" />
+            تصريح أبوي
+          </Button>
+        )}
         {e.status === 'pending' ? (
           <div className="flex flex-col gap-1.5 shrink-0">
             <Button size="sm" disabled={busy === e.id} onClick={() => setStatus(e.id, 'accepted')} className="bg-green-600 hover:bg-green-700 text-white">
@@ -585,6 +600,14 @@ export function EnrollmentsManager({ data, reload }: Office) {
       </div>
 
       <ConfirmDelete open={!!del} onClose={() => setDel(null)} onConfirm={remove} name={del ? `${del.firstName} ${del.lastName}`.trim() || del.fullName : undefined} />
+
+      {/* تصريح أبوي معبأ من بيانات الطلب — الطباعة متاحة للفرع والأرشفة أمر الإدارة */}
+      <ParentAuthorizationDialog
+        open={!!authFor}
+        onClose={() => setAuthFor(null)}
+        initial={authFor ? authorizationFromEnrollment(authFor, data.branch.name) : {}}
+        canArchive={false}
+      />
     </div>
   )
 }

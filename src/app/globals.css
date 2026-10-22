@@ -374,7 +374,34 @@ html.light .logo-glow {
     box-shadow: none !important;
     border-radius: 0 !important;
   }
+  /* حاويات معاينة النماذج النظامية: تُلغى القصّة أثناء الطباعة حتى تظهر الورقة كاملة */
+  .doc-print-host {
+    overflow: visible !important;
+    max-height: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
   .doc-print-hide {
+    display: none !important;
+  }
+}
+
+/* بوابة الطباعة للنماذج النظامية: نسخة خارج الحوار تُعرض في الطباعة فقط */
+.doc-only-print {
+  display: none;
+}
+@media print {
+  .doc-only-print {
+    display: block !important;
+  }
+  /* ملاءمة ورقة A4: عرض مضبوط يمنع الانزلاق إلى صفحة ثانية */
+  .doc-only-print .doc-paper {
+    width: 93% !important;
+    max-width: none !important;
+  }
+  /* عند وجود بوابة الطباعة: أخفِ كل عناصر الصفحة كلياً (لا مجرد بصرياً)
+     حتى لا تمتد الصفحات الفارغة في التقسيم — البوابة وحدها تُطبع */
+  body:has(.doc-only-print) > *:not(.doc-only-print) {
     display: none !important;
   }
 }
