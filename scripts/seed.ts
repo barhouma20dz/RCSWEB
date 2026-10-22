@@ -1,7 +1,22 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaLibSQL } from '@prisma/adapter-libsql'
+import { createClient } from '@libsql/client'
 import crypto from 'crypto'
 
-const db = new PrismaClient()
+/**
+ * الاتصال: Turso عند توفر TURSO_DATABASE_URL (مثل تعبئة قاعدة الإنتاج الدائمة)،
+ * وإلا SQLite المحلي من DATABASE_URL — نفس منطق src/lib/db.ts.
+ */
+function makeClient(): PrismaClient {
+  const tursoUrl = process.env.TURSO_DATABASE_URL
+  if (tursoUrl) {
+    const libsql = createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+    return new PrismaClient({ adapter: new PrismaLibSQL(libsql) })
+  }
+  return new PrismaClient()
+}
+
+const db = makeClient()
 
 // ===== تشفير كلمة المرور (نفس منطق lib/auth) =====
 function hashPassword(password: string): string {
