@@ -49,6 +49,8 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { ParentAuthorizationDialog, authorizationFromEnrollment } from '../system-papers'
+import { EnrollmentFormDialog, type EnrollmentFormData } from '../enrollment-form'
+import { FileDown } from 'lucide-react'
 import { MatchRow, GalleryGrid } from '../branches'
 import type { OfficeData, NewsItem, PlayerItem, MatchItem, TrainingItem, GalleryImage, StandingItem, VideoItem } from '../types'
 
@@ -473,6 +475,42 @@ export function EnrollmentsManager({ data, reload }: Office) {
   const [busy, setBusy] = useState<string | null>(null)
   const [del, setDel] = useState<(typeof data.enrollments)[number] | null>(null)
   const [authFor, setAuthFor] = useState<(typeof data.enrollments)[number] | null>(null)
+  const [formFor, setFormFor] = useState<EnrollmentFormData | null>(null)
+  const [formBusy, setFormBusy] = useState('')
+
+  /** جلب الاستمارة الرسمية من الخادم (الرقم التسلسلي يحسب من الخادم) */
+  const openForm = async (e: (typeof data.enrollments)[number]) => {
+    setFormBusy(e.id)
+    try {
+      const res = await apiFetch(`/api/office/enrollment-form?id=${encodeURIComponent(e.id)}`)
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'تعذر جلب الاستمارة')
+      // أبني بيانات الاستمارة من الرد (enrollment + branch + regNumber + season)
+      setFormFor({
+        id: d.enrollment.id,
+        regNumber: d.regNumber,
+        regYear: d.regYear,
+        fullName: d.enrollment.fullName,
+        gender: d.enrollment.gender,
+        birthDate: d.enrollment.birthDate,
+        birthPlace: d.enrollment.birthPlace ?? '',
+        address: d.enrollment.address,
+        phone: d.enrollment.phone,
+        parentName: d.enrollment.parentName,
+        bloodType: d.enrollment.bloodType ?? '',
+        specialty: d.enrollment.specialty ?? '',
+        branchName: d.branch.name,
+        branchSlug: d.branch.slug,
+        note: d.enrollment.note ?? '',
+        createdAt: d.enrollment.createdAt,
+        season: d.season,
+      })
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setFormBusy('')
+    }
+  }
 
   const setStatus = async (id: string, status: 'accepted' | 'rejected') => {
     setBusy(id)
@@ -551,6 +589,17 @@ export function EnrollmentsManager({ data, reload }: Office) {
             تصريح أبوي
           </Button>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={formBusy === e.id}
+          onClick={() => openForm(e)}
+          title="إنشاء استمارة الانخراط الرسمية A4 لهذا المنخرط"
+          className="font-bold border-(--club)/30 text-(--club) hover:bg-(--club-light) shrink-0"
+        >
+          {formBusy === e.id ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <FileDown className="ml-1 h-3.5 w-3.5" />}
+          استمارة
+        </Button>
         {e.status === 'pending' ? (
           <div className="flex flex-col gap-1.5 shrink-0">
             <Button size="sm" disabled={busy === e.id} onClick={() => setStatus(e.id, 'accepted')} className="bg-green-600 hover:bg-green-700 text-white">
@@ -607,6 +656,13 @@ export function EnrollmentsManager({ data, reload }: Office) {
         onClose={() => setAuthFor(null)}
         initial={authFor ? authorizationFromEnrollment(authFor, data.branch.name) : {}}
         canArchive={false}
+      />
+
+      {/* استمارة الانخراط الرسمية */}
+      <EnrollmentFormDialog
+        open={!!formFor}
+        onClose={() => setFormFor(null)}
+        initial={formFor}
       />
     </div>
   )

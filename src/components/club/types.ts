@@ -85,6 +85,9 @@ export interface EnrollmentItem {
   fullName: string
   gender: string // male | female | '' (طلبات قديمة)
   birthDate: string
+  birthPlace?: string // مكان الميلاد
+  specialty?: string // التخصص أو الفئة الرياضية
+  bloodType?: string // فصيلة الدم
   age: number
   address: string // العنوان (للبالغ أو عنوان ولي الأمر للقاصر)
   phone: string // الهاتف (للبالغ أو هاتف ولي الأمر للقاصر)
@@ -230,6 +233,27 @@ export interface SectionTexts {
   subtitle?: Partial<Record<string, string>>
 }
 
+// ============ إعدادات استمارة الانخراط المطبوعة (A4 — تُدار من حساب الإدارة) ============
+
+/** رسوم فرع رياضي واحد (لن تظهر إلا للفروع المعنية مثل السباحة) */
+export interface EnrollmentFormFee {
+  enabled: boolean // هل الفرع معني برسوم الاشتراك والتأمين؟
+  subscription: number // مبلغ الاشتراك الرياضي (دج)
+  insurance: number // مصاريف التأمين (دج)
+}
+
+export interface EnrollmentFormSettings {
+  rules: string[] // القوانين الأساسية للنادي (نقاط مختصرة)
+  parentalText: string // نص التصريح الأبوي (يُعرض للقصر فقط)
+  medicalDefault: string // صيغة التصريح الطبي الافتراضية (إرشادية — يملأها الطبيب)
+  medicalByBranch: Record<string, string> // صيغة خاصة بكل فرع (حسب متطلبات الرياضة)
+  fees: Record<string, EnrollmentFormFee> // رسوم الاشتراك والتأمين لكل فرع
+  bankInfo: string // معلومات الحساب البنكي للجمعية (اختياري)
+  showBirthPlace: boolean // إظهار حقل مكان الميلاد
+  showSpecialty: boolean // إظهار حقل التخصص/الفئة
+  showBloodType: boolean // إظهار حقل فصيلة الدم
+}
+
 /** إعدادات تصميم الواجهة الرئيسية — كل الحقول اختيارية مع قيم افتراضية */
 export interface SiteSettings {
   hero?: {
@@ -264,6 +288,7 @@ export interface SiteSettings {
     guardianTitle?: string // عنوان قسم معلومات ولي الأمر
     adultTitle?: string // عنوان قسم معلومات المنخرط البالغ
     notice?: Partial<Record<'ar' | 'fr' | 'en', string>> // إشعار يظهر أعلى الاستمارة
+    form?: EnrollmentFormSettings // إعدادات الاستمارة المطبوعة A4 (تُدار من حساب الإدارة)
   }
   design?: {
     accent?: string // silver | gold | red | green | rose

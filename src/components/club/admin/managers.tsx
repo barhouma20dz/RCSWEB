@@ -24,6 +24,7 @@ import {
   Eye,
   EyeOff,
   FileSignature,
+  FileDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -48,6 +49,12 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { ParentAuthorizationDialog, authorizationFromEnrollment } from '../system-papers'
+import {
+  EnrollmentFormDialog,
+  enrollmentFromItem,
+  computeRegNumberFromList,
+  type EnrollmentFormData,
+} from '../enrollment-form'
 import { BranchIcon } from '../icon-map'
 import type {
   AdminData,
@@ -762,7 +769,22 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
   const [statusFilter, setStatusFilter] = useState('all')
   const [del, setDel] = useState<(EnrollmentItem & { branch: { name: string; color: string; slug: string } }) | null>(null)
   const [authFor, setAuthFor] = useState<(EnrollmentItem & { branch: { name: string; color: string; slug: string } }) | null>(null)
+  const [formFor, setFormFor] = useState<EnrollmentFormData | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+
+  /** استمارة الانخراط الرسمية — من بيانات الطلب مباشرة (القائمة هنا كاملة فالترقيم محلي مطابق للخادم) */
+  const openForm = (e: EnrollmentItem & { branch: { name: string; color: string; slug: string } }) => {
+    const season = data.settings?.design?.season?.trim() || '2026/2027'
+    setFormFor(
+      enrollmentFromItem(
+        e,
+        { name: e.branch.name, slug: e.branch.slug },
+        computeRegNumberFromList(data.enrollments, e),
+        String(new Date(e.createdAt).getFullYear()),
+        season
+      )
+    )
+  }
 
   const filtered = data.enrollments.filter(
     (e) =>
@@ -851,6 +873,16 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openForm(e)}
+                  title="إنشاء استمارة الانخراط الرسمية A4 لهذا المنخرط"
+                  className="font-bold border-(--club)/30 text-(--club) hover:bg-(--club-light)"
+                >
+                  <FileDown className="h-4 w-4" />
+                  استمارة
+                </Button>
                 {isMinor && (
                   <Button
                     size="sm"
@@ -905,6 +937,13 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
         initial={authFor ? authorizationFromEnrollment(authFor, authFor.branch?.name || '') : {}}
         canArchive
         onSaved={reload}
+      />
+
+      {/* استمارة الانخراط الرسمية */}
+      <EnrollmentFormDialog
+        open={!!formFor}
+        onClose={() => setFormFor(null)}
+        initial={formFor}
       />
     </div>
   )

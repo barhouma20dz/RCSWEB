@@ -404,6 +404,14 @@ html.light .logo-glow {
   body:has(.doc-only-print) > *:not(.doc-only-print) {
     display: none !important;
   }
+  /* ورق أبيض نظيف: لا خلفية داكنة للموقع في هوامش الطباعة */
+  html:has(.doc-only-print),
+  body:has(.doc-only-print) {
+    background: #ffffff !important;
+  }
+  body:has(.doc-only-print) > *:not(.doc-only-print) {
+    background: transparent !important;
+  }
 }
 
 /* فاصل صفحات أثناء الطباعة — للنماذج متعددة الصفحات (العقد ثم ملحقه) */

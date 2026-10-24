@@ -24,6 +24,11 @@ import {
   ClipboardList,
   User,
   Info,
+  Banknote,
+  FileText,
+  Scale,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,7 +41,8 @@ import { Slider } from '@/components/ui/slider'
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { ACCENT_PRESETS, applyAccent, useSiteSettings, HERO_PRESETS, DEFAULT_HERO_IMAGE } from '../site-store'
-import type { AdminData, SiteSettings, SectionKey } from '../types'
+import { DEFAULT_FORM_SETTINGS, FEES_NOTICE, mergeFormSettings } from '../enrollment-form'
+import type { AdminData, EnrollmentFormSettings, SiteSettings, SectionKey } from '../types'
 
 type SectionTab = 'design' | 'texts' | 'contact' | 'enrollment' | 'layout'
 type TextLang = 'ar' | 'fr' | 'en'
@@ -64,6 +70,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
     guardianTitle: 'معلومات ولي الأمر',
     adultTitle: 'معلومات المنخرط الشخصية',
     notice: { ar: '', fr: '', en: '' },
+    form: DEFAULT_FORM_SETTINGS,
   },
   design: {
     accent: 'silver',
@@ -96,7 +103,7 @@ function mergeDefaults(s: SiteSettings | null | undefined): SiteSettings {
     hero: { ...DEFAULT_SETTINGS.hero, ...s?.hero },
     about: { ...DEFAULT_SETTINGS.about, ...s?.about },
     contact: { ...DEFAULT_SETTINGS.contact, ...s?.contact },
-    enrollment: { ...DEFAULT_SETTINGS.enrollment, ...s?.enrollment },
+    enrollment: { ...DEFAULT_SETTINGS.enrollment, ...s?.enrollment, form: mergeFormSettings(s?.enrollment?.form) },
     design: { ...DEFAULT_SETTINGS.design, ...s?.design },
     sections: { ...DEFAULT_SETTINGS.sections, ...s?.sections },
     texts: { ...s?.texts },
@@ -140,6 +147,7 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
   const [textsSection, setTextsSection] = useState<SectionKey>('about')
   const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState<SiteSettings>(() => mergeDefaults(data.settings))
+  const [medicalBranch, setMedicalBranch] = useState<string>('')
 
   // إعادة التحميل بعد reload من الأعلى
   useEffect(() => {
@@ -676,10 +684,304 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
                 ))}
               </div>
             </div>
+
+            <Separator />
+
+            {/* ===== الاستمارة المطبوعة A4 — تُدار من حساب الإدارة ===== */}
+            <div>
+              <Label className="text-base font-black text-(--club-dark) flex items-center gap-1.5">
+                <FileText className="h-4 w-4" /> الاستمارة المطبوعة A4 — استمارة الانخراط الرسمية
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-3 leading-relaxed">
+                استمارة موحدة لجميع الرياضات تُطبع صفحة A4 واحدة بعد تسجيل أي منخرط (ولأي منخرط
+                قديم من صفحة الطلبات): معلومات المنخرط تلقائياً من ملفه، الشهادة الطبية يملؤها
+                الطبيب، التصريح الأبوي للقاصرين، ورسوم الاشتراك والتأمين للفروع المعنية فقط، مع
+                القوانين الأساسية ومعلومات النادي.
+              </p>
+
+              {/* الحقول الظاهرة على الاستمارة */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(
+                  [
+                    { key: 'showBirthPlace', label: 'مكان الميلاد' },
+                    { key: 'showSpecialty', label: 'التخصص / الفئة' },
+                    { key: 'showBloodType', label: 'فصيلة الدم' },
+                  ] as Array<{ key: keyof EnrollmentFormSettings; label: string }>
+                ).map((f) => (
+                  <div key={String(f.key)} className="flex items-center justify-between rounded-xl border border-(--border) p-3.5">
+                    <span className="font-bold text-sm text-(--club-dark)">{f.label}</span>
+                    <Switch
+                      checked={(draft.enrollment?.form as unknown as Record<string, boolean>)?.[f.key as string] !== false}
+                      onCheckedChange={(v) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: { ...mergeFormSettings(draft.enrollment?.form), [f.key]: v },
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* رسوم الاشتراك والتأمين لكل فرع */}
+              <div className="mt-5 rounded-2xl border border-(--border) overflow-hidden">
+                <div className="bg-(--club-light) px-4 py-2.5 flex items-center gap-2">
+                  <Banknote className="h-4 w-4 text-(--club)" />
+                  <span className="font-black text-sm text-(--club-dark)">رسوم الاشتراك والتأمين — لكل فرع</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground px-4 py-2 leading-relaxed border-b border-(--border)">
+                  فعّل الرسوم للفروع المعنية فقط (مثل السباحة) وحدّد المبالغ بالدينار. الفروع غير
+                  المفعّلة لا يظهر قسم الرسوم في استمارتها إطلاقاً.
+                </p>
+                <div className="divide-y divide-(--border) max-h-72 overflow-y-auto nice-scroll">
+                  {data.branches.map((b) => {
+                    const f = mergeFormSettings(draft.enrollment?.form).fees[b.slug] ?? {
+                      enabled: false,
+                      subscription: 0,
+                      insurance: 0,
+                    }
+                    const setFee = (patch: Partial<typeof f>) =>
+                      setDraft({
+                        ...draft,
+                        enrollment: {
+                          ...draft.enrollment,
+                          form: {
+                            ...mergeFormSettings(draft.enrollment?.form),
+                            fees: {
+                              ...mergeFormSettings(draft.enrollment?.form).fees,
+                              [b.slug]: { ...f, ...patch },
+                            },
+                          },
+                        },
+                      })
+                    return (
+                      <div key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: b.color }}
+                          aria-hidden
+                        />
+                        <span className="font-bold text-sm text-(--club-dark) min-w-28 flex-1">{b.name}</span>
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground cursor-pointer">
+                          <Switch checked={f.enabled} onCheckedChange={(v) => setFee({ enabled: v })} />
+                          معني بالرسوم
+                        </label>
+                        {f.enabled && (
+                          <>
+                            <label className="flex items-center gap-1 text-xs font-bold">
+                              الاشتراك
+                              <Input
+                                type="number"
+                                min={0}
+                                dir="ltr"
+                                className="w-24 h-8 text-right"
+                                value={f.subscription || 0}
+                                onChange={(e) => setFee({ subscription: Math.max(0, Number(e.target.value) || 0) })}
+                              />
+                              دج
+                            </label>
+                            <label className="flex items-center gap-1 text-xs font-bold">
+                              التأمين
+                              <Input
+                                type="number"
+                                min={0}
+                                dir="ltr"
+                                className="w-24 h-8 text-right"
+                                value={f.insurance || 0}
+                                onChange={(e) => setFee({ insurance: Math.max(0, Number(e.target.value) || 0) })}
+                              />
+                              دج
+                            </label>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="px-4 py-2.5 border-t border-(--border) bg-neutral-50">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-black text-muted-foreground">معلومات الحساب البنكي للجمعية (اختياري — يظهر في قسم الرسوم)</Label>
+                    <Input
+                      value={mergeFormSettings(draft.enrollment?.form).bankInfo}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: { ...mergeFormSettings(draft.enrollment?.form), bankInfo: e.target.value },
+                          },
+                        })
+                      }
+                      placeholder="مثال: CCP 000123 سعيدة / أو رقم الحساب البنكي"
+                      className="text-right"
+                    />
+                    <p className="text-[10px] font-bold text-neutral-600 bg-white border border-(--border) rounded-lg px-3 py-2 leading-relaxed">
+                      العبارة المطبوعة ثابتاً في قسم الرسوم: «{FEES_NOTICE}»
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* التصريح الأبوي */}
+              <div className="mt-5 space-y-1.5">
+                <Label className="font-bold text-sm text-(--club-dark)">نص التصريح الأبوي (يظهر للقاصرين فقط)</Label>
+                <Textarea
+                  rows={3}
+                  value={mergeFormSettings(draft.enrollment?.form).parentalText}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      enrollment: {
+                        ...draft.enrollment,
+                        form: { ...mergeFormSettings(draft.enrollment?.form), parentalText: e.target.value },
+                      },
+                    })
+                  }
+                />
+              </div>
+
+              {/* الصيغة الطبية */}
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="font-bold text-sm text-(--club-dark)">الصيغة الطبية الافتراضية (إرشادية — اختياري)</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    نص خافت يُطبع داخل مربع الشهادة الطبية كإرشاد للطبيب. لا يُطبّق أي تصريح
+                    «سليم طبياً» تلقائياً — الطبيب هو من يملأ ويوقّع ويختم.
+                  </p>
+                  <Textarea
+                    rows={3}
+                    value={mergeFormSettings(draft.enrollment?.form).medicalDefault}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        enrollment: {
+                          ...draft.enrollment,
+                          form: { ...mergeFormSettings(draft.enrollment?.form), medicalDefault: e.target.value },
+                        },
+                      })
+                    }
+                    placeholder="اتركه فارغاً ليملأ الطبيب التصريح بحرية كاملة"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold text-sm text-(--club-dark)">صيغة خاصة بفرع معين (حسب متطلبات الرياضة)</Label>
+                  <select
+                    value={medicalBranch}
+                    onChange={(e) => setMedicalBranch(e.target.value)}
+                    className="w-full h-9 rounded-md border border-(--border) bg-white px-2 text-sm font-bold text-right"
+                    aria-label="اختيار الفرع للصيغة الطبية الخاصة"
+                  >
+                    <option value="">— اختر فرعاً —</option>
+                    {data.branches.map((b) => (
+                      <option key={b.id} value={b.slug}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                  {medicalBranch && (
+                    <Textarea
+                      rows={3}
+                      value={mergeFormSettings(draft.enrollment?.form).medicalByBranch[medicalBranch] ?? ''}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: {
+                              ...mergeFormSettings(draft.enrollment?.form),
+                              medicalByBranch: {
+                                ...mergeFormSettings(draft.enrollment?.form).medicalByBranch,
+                                [medicalBranch]: e.target.value,
+                              },
+                            },
+                          },
+                        })
+                      }
+                      placeholder="مثال: شهادة طبية تثبت القدرة على ممارسة السباحة..."
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* القوانين الأساسية */}
+              <div className="mt-5 rounded-2xl border border-(--border) overflow-hidden">
+                <div className="bg-(--club-light) px-4 py-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-(--club)" />
+                    <span className="font-black text-sm text-(--club-dark)">القوانين الأساسية للنادي (نقاط مختصرة)</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="font-bold h-8"
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        enrollment: {
+                          ...draft.enrollment,
+                          form: {
+                            ...mergeFormSettings(draft.enrollment?.form),
+                            rules: [...mergeFormSettings(draft.enrollment?.form).rules, ''],
+                          },
+                        },
+                      })
+                    }
+                  >
+                    <Plus className="h-3.5 w-3.5 ml-1" /> إضافة قانون
+                  </Button>
+                </div>
+                <div className="p-3 space-y-2">
+                  {mergeFormSettings(draft.enrollment?.form).rules.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs font-black text-muted-foreground w-5 text-center">{i + 1}</span>
+                      <Input
+                        value={r}
+                        onChange={(e) => {
+                          const rules = [...mergeFormSettings(draft.enrollment?.form).rules]
+                          rules[i] = e.target.value
+                          setDraft({
+                            ...draft,
+                            enrollment: {
+                              ...draft.enrollment,
+                              form: { ...mergeFormSettings(draft.enrollment?.form), rules },
+                            },
+                          })
+                        }}
+                        className="bg-white text-right text-sm"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`حذف القانون ${i + 1}`}
+                        className="text-destructive shrink-0"
+                        onClick={() => {
+                          const rules = mergeFormSettings(draft.enrollment?.form).rules.filter((_, j) => j !== i)
+                          setDraft({
+                            ...draft,
+                            enrollment: {
+                              ...draft.enrollment,
+                              form: { ...mergeFormSettings(draft.enrollment?.form), rules },
+                            },
+                          })
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {mergeFormSettings(draft.enrollment?.form).rules.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      لا توجد قوانين — لن يُطبع قسم القوانين. اضغط «إضافة قانون».
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
-
-        {/* ===== معلومات التواصل ===== */}
         {tab === 'contact' && (
           <div className="space-y-6">
             <p className="text-xs md:text-sm font-bold text-muted-foreground leading-relaxed">

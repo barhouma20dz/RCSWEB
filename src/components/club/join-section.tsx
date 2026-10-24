@@ -34,6 +34,7 @@ import {
   Info,
   ShieldCheck,
   FileSignature,
+  FileDown,
   Printer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,11 @@ import { formatDateDMY } from '@/lib/date-format'
 import { useToast } from '@/hooks/use-toast'
 import type { BranchSummary } from './types'
 import { ParentAuthorizationDialog, type AuthorizationData } from './system-papers'
+import {
+  EnrollmentFormDialog,
+  enrollmentFromItem,
+  type EnrollmentFormData,
+} from './enrollment-form'
 
 /** رموز الفروع المعروضة على البطاقات */
 const BRANCH_CODES: Record<string, string> = {
@@ -108,6 +114,35 @@ function TrackCard() {
   const [searched, setSearched] = useState(false)
   const [results, setResults] = useState<TrackRequest[]>([])
   const [error, setError] = useState('')
+  const [formFor, setFormFor] = useState<EnrollmentFormData | null>(null)
+  const [formLoadingId, setFormLoadingId] = useState('')
+
+  /** جلب بيانات الطلب المكتملة (بنفس التحقق: الهاتف + اللقب) لإنشاء الاستمارة */
+  const openForm = async (r: TrackRequest) => {
+    setFormLoadingId(r.id)
+    try {
+      const res = await fetch('/api/public/enroll-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id, phone: phone.trim(), lastName: lastName.trim() }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'تعذر جلب الاستمارة')
+      setFormFor(
+        enrollmentFromItem(
+          d.enrollment,
+          { name: d.branch.name, slug: d.branch.slug },
+          d.regNumber,
+          d.regYear,
+          d.season
+        )
+      )
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setFormLoadingId('')
+    }
+  }
 
   const search = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,7 +168,8 @@ function TrackCard() {
   }
 
   return (
-    <motion.div
+    <>
+      <motion.div
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
@@ -207,12 +243,35 @@ function TrackCard() {
                   </div>
                 </div>
                 <StatusBadge status={r.status} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={formLoadingId === r.id}
+                  onClick={() => openForm(r)}
+                  title="إعادة إنشاء استمارة الانخراط الرسمية لهذا الطلب"
+                  className="shrink-0 h-8 px-2.5 font-bold border-paper/25 text-paper hover:bg-paper/10"
+                >
+                  {formLoadingId === r.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileDown className="h-4 w-4" />
+                  )}
+                  استمارة
+                </Button>
               </div>
             ))
           )}
         </div>
       )}
     </motion.div>
+
+      {/* استمارة الانخراط الرسمية — إعادة الإنشاء لطلب سابق بنفس تحقق الهاتف + اللقب */}
+      <EnrollmentFormDialog
+        open={!!formFor}
+        onClose={() => setFormFor(null)}
+        initial={formFor}
+      />
+    </>
   )
 }
 
@@ -251,12 +310,16 @@ export function JoinSection({
   const [lastName, setLastName] = useState('')
   const [gender, setGender] = useState<'male' | 'female' | ''>('')
   const [birthDate, setBirthDate] = useState('')
+  const [birthPlace, setBirthPlace] = useState('')
   const [guardianName, setGuardianName] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [branchId, setBranchId] = useState(preselectedBranchId ?? '')
   const [note, setNote] = useState('')
   const [clientError, setClientError] = useState('')
+  // استمارة الانخراط الرسمية — تظهر جاهزة فور نجاح التسجيل
+  const [doneForm, setDoneForm] = useState<EnrollmentFormData | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
 
   const age = useMemo(() => computeAge(birthDate), [birthDate])
   const isMinor = age !== null && age < adultAge
@@ -270,6 +333,7 @@ export function JoinSection({
     setLastName('')
     setGender('')
     setBirthDate('')
+    setBirthPlace('')
     setGuardianName('')
     setAddress('')
     setPhone('')
@@ -314,6 +378,7 @@ export function JoinSection({
           lastName,
           gender: showGender ? gender : 'male',
           birthDate,
+          birthPlace,
           address,
           phone,
           parentName: isMinor ? guardianName : '',
@@ -325,6 +390,28 @@ export function JoinSection({
       if (!res.ok) throw new Error(d.error || 'خطأ غير متوقع')
       toast({ title: 'تم الإرسال بنجاح', description: d.message })
       setDoneBranch(selectedBranch?.name ?? '')
+      // استمارة الانخراط الرسمية جاهزة فوراً بمعلومات المنخرط ورقمه التسلسلي
+      setDoneForm(
+        enrollmentFromItem(
+          {
+            id: d.id,
+            firstName,
+            lastName,
+            fullName: `${firstName} ${lastName}`.trim(),
+            gender: showGender ? gender : 'male',
+            birthDate,
+            birthPlace,
+            address,
+            phone,
+            parentName: isMinor ? guardianName : '',
+            createdAt: new Date().toISOString(),
+          },
+          { name: selectedBranch?.name ?? '', slug: selectedBranch?.slug },
+          d.regNumber ?? '001',
+          d.regYear ?? String(new Date().getFullYear()),
+          season
+        )
+      )
       // تصريح أبوي جاهز بمعلومات الولي والابن للقاصرين (تُطبع الحقول الناقصة بخطوط منقطة)
       setDoneAuth(
         isMinor
@@ -415,6 +502,27 @@ export function JoinSection({
                   </p>
                 )}
                 <p className="text-muted-foreground leading-relaxed mb-6">{t('join.doneBody')}</p>
+
+                {/* استمارة الانخراط الرسمية — جاهزة فوراً لكل منخرط */}
+                {doneForm && (
+                  <div className="mb-5 rounded-2xl border-2 border-(--club)/30 bg-(--club-light) p-4 max-w-sm mx-auto">
+                    <div className="flex items-center justify-center gap-2 font-black text-(--club-dark) text-sm">
+                      <FileDown className="h-4 w-4 text-(--club)" />
+                      استمارة الانخراط الرسمية جاهزة
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                      صفحة A4 واحدة: معلوماتك، الشهادة الطبية، التصريح الأبوي (للأقل من سن الرشد)،
+                      الرسوم إن وجدت، والقوانين — اطبعها أو احفظها PDF ووقّعها.
+                    </p>
+                    <Button
+                      onClick={() => setFormOpen(true)}
+                      className="mt-3 w-full bg-(--club) hover:bg-(--club)/90 text-white font-bold"
+                    >
+                      <FileDown className="h-4 w-4 ml-1" /> عرض الاستمارة وتحميلها
+                    </Button>
+                  </div>
+                )}
+
                 {doneAuth && (
                   <div className="mb-6 rounded-2xl border border-(--club)/25 bg-(--club-light) p-4 max-w-sm mx-auto">
                     <div className="flex items-center justify-center gap-2 font-black text-(--club-dark) text-sm">
@@ -617,6 +725,21 @@ export function JoinSection({
                         )}
                       </div>
                     </div>
+
+                    {/* مكان الميلاد (اختياري — يظهر في الاستمارة الرسمية) */}
+                    {enrollCfg.form?.showBirthPlace !== false && (
+                      <div>
+                        <Label htmlFor="join-birth-place">مكان الميلاد (اختياري)</Label>
+                        <Input
+                          id="join-birth-place"
+                          value={birthPlace}
+                          onChange={(e) => setBirthPlace(e.target.value)}
+                          placeholder="مثال: سعيدة"
+                          className="mt-1.5"
+                          maxLength={120}
+                        />
+                      </div>
+                    )}
                   </fieldset>
 
                   {/* ====== القسم الشرطي حسب العمر ====== */}
@@ -798,6 +921,13 @@ export function JoinSection({
         initial={doneAuth ?? {}}
         canArchive={false}
         publicMode
+      />
+
+      {/* استمارة الانخراط الرسمية — فور نجاح التسجيل */}
+      <EnrollmentFormDialog
+        open={formOpen && !!doneForm}
+        onClose={() => setFormOpen(false)}
+        initial={doneForm}
       />
     </section>
   )

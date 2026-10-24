@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { clientIp } from '@/lib/auth'
 import { publicFormLimit } from '@/lib/rate-limit'
+import { normalizePhone } from '@/lib/enroll-form'
 
 /**
  * استمارة الانخراط الموسمي — يرسل الطلب إلى الفرع المحدد في الاستمارة
@@ -82,6 +83,9 @@ export async function POST(req: NextRequest) {
         birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'تاريخ الميلاد مطلوب (شهر/يوم/سنة)'),
         address: z.string().trim().max(300).optional().default(''),
         phone: z.string().regex(/^[0-9+\s-]{9,15}$/, 'رقم هاتف غير صالح (مثال: 0770123456)'),
+        birthPlace: z.string().trim().max(120).optional().default(''),
+        specialty: z.string().trim().max(120).optional().default(''),
+        bloodType: z.string().trim().max(8).optional().default(''),
         parentName: z.string().trim().max(120).optional().default(''),
         branchId: z.string().min(1, 'يرجى اختيار الفرع الرياضي'),
         note: z.string().max(500).optional().default(''),
@@ -138,16 +142,27 @@ export async function POST(req: NextRequest) {
         age,
         address: d.address,
         phone: d.phone,
+        birthPlace: d.birthPlace,
+        specialty: d.specialty,
+        bloodType: d.bloodType,
         parentName: isMinor ? d.parentName : '',
         note: cfg.showNote ? d.note : '',
         branchId: d.branchId,
       },
     })
 
+    // رقم الانخراط التسلسلي (يُعرض على الاستمارة المطبوعة)
+    const count = await db.enrollment.count({
+      where: { createdAt: { lte: enrollment.createdAt } },
+    })
+    const regNumber = String(count).padStart(3, '0')
+
     return NextResponse.json({
       success: true,
       message: `تم استلام طلب انخراطك إلى ${branch.name} بنجاح! سيتواصل معك مكتب الفرع قريباً.`,
       id: enrollment.id,
+      regNumber,
+      regYear: String(enrollment.createdAt.getFullYear()),
     })
   } catch (e) {
     console.error('enroll error', e)
