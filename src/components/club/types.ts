@@ -252,6 +252,7 @@ export interface EnrollmentFormSettings {
   showBirthPlace: boolean // إظهار حقل مكان الميلاد
   showSpecialty: boolean // إظهار حقل التخصص/الفئة
   showBloodType: boolean // إظهار حقل فصيلة الدم
+  showMunicipalityStamp: boolean // إظهار خانة «ختم وإمضاء مصالح البلدية» في التصريح الأبوي
 }
 
 /** إعدادات تصميم الواجهة الرئيسية — كل الحقول اختيارية مع قيم افتراضية */

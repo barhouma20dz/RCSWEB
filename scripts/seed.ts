@@ -916,6 +916,7 @@ async function main() {
             showBirthPlace: true,
             showSpecialty: true,
             showBloodType: true,
+            showMunicipalityStamp: true,
           },
         },
         sections: {

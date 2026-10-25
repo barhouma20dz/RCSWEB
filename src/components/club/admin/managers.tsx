@@ -944,6 +944,7 @@ export function EnrollmentsManager({ data, reload }: { data: AdminData; reload: 
         open={!!formFor}
         onClose={() => setFormFor(null)}
         initial={formFor}
+        allowEdit
       />
     </div>
   )

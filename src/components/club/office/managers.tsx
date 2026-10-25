@@ -663,6 +663,7 @@ export function EnrollmentsManager({ data, reload }: Office) {
         open={!!formFor}
         onClose={() => setFormFor(null)}
         initial={formFor}
+        allowEdit
       />
     </div>
   )

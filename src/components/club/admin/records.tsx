@@ -72,6 +72,7 @@ import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { DocumentPaper, parseDesign, type DocumentDesign } from '../document-paper'
 import { parseSystemDesign } from '../system-papers'
+import { PaperSizeSelector, PrintPageSize, type PaperSize } from '../doc-blocks'
 import { AdminPaperLibrarySection, SystemPaperView } from '../admin-papers'
 import type {
   AdminData,
@@ -107,6 +108,11 @@ const TEMPLATE_CATEGORIES = ['كتاب إداري', 'محضر', 'شهادة', '�
 const KIND_LABELS: Record<string, string> = {
   template: 'نموذج قابل للإصدار',
   reference: 'مرجع للقراءة',
+}
+
+/** يقرأ حجم الورقة المحفوظ في تصميم وثيقة (A4 افتراضياً) */
+function docPaperSize(designJson: string | undefined): PaperSize {
+  return parseDesign(designJson ?? '').paperSize === 'A5' ? 'A5' : 'A4'
 }
 
 /** تسميات أنواع وثائق الأرشيف — محلية لتغطية النوع المُصدَر أيضاً */
@@ -417,6 +423,7 @@ function IssuedPaper({
   phone,
   address,
   issueDate,
+  paperSize = 'A4',
 }: {
   template: { fileType: string; fileData?: string; category?: string }
   fields: TemplateField[]
@@ -429,13 +436,17 @@ function IssuedPaper({
   phone?: string
   address?: string
   issueDate: string
+  /** حجم الورقة حسب الاختيار — A4 افتراضياً */
+  paperSize?: PaperSize
 }) {
   return (
     <div
       dir="rtl"
-      className="doc-paper doc-print-area mx-auto w-full max-w-[760px] px-[4.5%] py-[3.5%]"
+      className={`doc-paper doc-print-area mx-auto w-full ${paperSize === 'A5' ? 'max-w-[560px]' : 'max-w-[760px]'} px-[4.5%] py-[3.5%]`}
       style={{ ['--doc-accent' as string]: '#9a7a25', containerType: 'inline-size' }}
     >
+      {/* حجم صفحة الطباعة الفعلي — A4 أو A5 */}
+      <PrintPageSize size={paperSize} />
       <div className="doc-paper-frame" />
 
       <div className="relative">
@@ -624,6 +635,8 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
     visibleToBranch: false,
   })
   const [issueSaving, setIssueSaving] = useState(false)
+  // حجم ورقة الإصدار حسب الاختيار — A4 أو A5
+  const [issueSize, setIssueSize] = useState<PaperSize>('A4')
 
   // ====== حالة تبويب الأرشيف (كما كانت + الوثائق المُصدرة) ======
   const [query, setQuery] = useState('')
@@ -633,6 +646,8 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
   const [editing, setEditing] = useState<ClubDocumentItem | null>(null)
   const [saving, setSaving] = useState(false)
   const [viewDoc, setViewDoc] = useState<ClubDocumentItem | null>(null)
+  // حجم ورقة العرض/الطباعة في نافذة الأرشيف — يتذكّر اختيار الوثيقة
+  const [viewSize, setViewSize] = useState<PaperSize>('A4')
   const [formTab, setFormTab] = useState<'data' | 'design'>('data')
   const [form, setForm] = useState({ ...DEFAULT_FORM })
   const [design, setDesign] = useState<DocumentDesign>({ ...DEFAULT_DESIGN })
@@ -1461,9 +1476,15 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
 
               {/* المعاينة الحية */}
               <div className="rounded-2xl border border-(--border) bg-white p-4">
-                <div className="mb-3 flex items-center gap-1.5 text-xs font-black text-(--club-dark)">
-                  <Eye className="h-3.5 w-3.5" />
-                  معاينة A4 حية — كما ستُطبع بترويسة النادي الموحدة
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-(--club-dark)">
+                    <Eye className="h-3.5 w-3.5" />
+                    معاينة حية — كما ستُطبع بترويسة النادي الموحدة
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-muted-foreground">حجم الورقة:</span>
+                    <PaperSizeSelector value={issueSize} onChange={setIssueSize} />
+                  </div>
                 </div>
                 {issueTpl && !issueLoading ? (
                   <>
@@ -1480,6 +1501,7 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
                         phone={contactPhone}
                         address={contactAddress}
                         issueDate={todayDMY()}
+                        paperSize={issueSize}
                       />
                     </div>
                     <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -1645,7 +1667,10 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setViewDoc(doc)}
+                          onClick={() => {
+                            setViewSize(docPaperSize(doc.design))
+                            setViewDoc(doc)
+                          }}
                           title="عرض الورقة"
                         >
                           <FileText className="h-4 w-4" />
@@ -2264,6 +2289,13 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
                     placeholder="رئيس النادي"
                   />
                 </div>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>حجم الورقة (A4 / A5)</Label>
+                  <PaperSizeSelector
+                    value={design.paperSize ?? 'A4'}
+                    onChange={(s) => setDesign({ ...design, paperSize: s })}
+                  />
+                </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <Label className="cursor-pointer">شعار النادي في الترويسة</Label>
@@ -2356,12 +2388,17 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
           </DialogHeader>
           {viewDoc && (
             <>
+              {/* محدد حجم الورقة A4/A5 — يطبَّق على المعاينة والطباعة معاً */}
+              <div className="doc-print-hide flex items-center justify-between gap-2 pb-2">
+                <span className="text-xs font-bold text-muted-foreground">حجم الورقة:</span>
+                <PaperSizeSelector value={viewSize} onChange={setViewSize} />
+              </div>
               {(() => {
                 const sys = parseSystemDesign(viewDoc.design)
                 if (sys) {
                   return <SystemPaperView form={sys.systemForm} params={sys.params} />
                 }
-                return <DocumentPaper doc={viewDoc} />
+                return <DocumentPaper doc={viewDoc} paperSize={viewSize} />
               })()}
               <div className="doc-print-hide flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setViewDoc(null)}>

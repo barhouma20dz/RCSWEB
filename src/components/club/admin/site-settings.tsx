@@ -700,12 +700,13 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
               </p>
 
               {/* الحقول الظاهرة على الاستمارة */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {(
                   [
                     { key: 'showBirthPlace', label: 'مكان الميلاد' },
                     { key: 'showSpecialty', label: 'التخصص / الفئة' },
                     { key: 'showBloodType', label: 'فصيلة الدم' },
+                    { key: 'showMunicipalityStamp', label: 'ختم مصالح البلدية (التصريح الأبوي)' },
                   ] as Array<{ key: keyof EnrollmentFormSettings; label: string }>
                 ).map((f) => (
                   <div key={String(f.key)} className="flex items-center justify-between rounded-xl border border-(--border) p-3.5">

@@ -8,6 +8,7 @@
 import { useMemo } from 'react'
 import { Star } from 'lucide-react'
 import { formatDateDMY } from '@/lib/date-format'
+import { paperWidthClass, PrintPageSize, type PaperSize } from './doc-blocks'
 import type { ClubDocumentItem } from './types'
 
 export interface DocumentDesign {
@@ -17,6 +18,8 @@ export interface DocumentDesign {
   showStamp: boolean
   showWatermark: boolean
   signatureName: string
+  /** حجم الورقة حسب الاختيار — A4 افتراضياً */
+  paperSize?: PaperSize
 }
 
 const DEFAULT_DESIGN: DocumentDesign = {
@@ -62,22 +65,32 @@ function formatDate(d: string | Date): string {
 export function DocumentPaper({
   doc,
   compact = false,
+  paperSize: paperSizeProp,
 }: {
   doc: Pick<
     ClubDocumentItem,
     'refNumber' | 'title' | 'type' | 'category' | 'content' | 'design' | 'createdAt' | 'member' | 'branch'
   >
   compact?: boolean
+  /** حجم الورقة عند العرض/الطباعة — يتجاوز المحفوظ في تصميم الوثيقة */
+  paperSize?: PaperSize
 }) {
   const design = useMemo(() => parseDesign(doc.design), [doc.design])
   const accent = ACCENT_HEX[design.accent] ?? ACCENT_HEX.navy
+  const size: PaperSize = paperSizeProp ?? design.paperSize ?? 'A4'
 
   return (
     <div
-      className={`doc-paper doc-print-area mx-auto w-full ${compact ? 'max-w-[520px] p-5 sm:p-7' : 'max-w-[680px] p-6 sm:p-10'}`}
+      className={`doc-paper doc-print-area mx-auto w-full ${
+        compact
+          ? 'max-w-[520px] p-5 sm:p-7'
+          : `${paperWidthClass(size)} ${size === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-10'}`
+      }`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
+      {/* حجم صفحة الطباعة الفعلي — A4 أو A5 حسب الاختيار */}
+      {!compact && <PrintPageSize size={size} />}
       <div className="doc-paper-frame" />
 
       {/* العلامة المائية */}

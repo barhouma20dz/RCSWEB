@@ -62,8 +62,14 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
-import { DocumentPaper, DOC_TYPE_LABELS } from '../document-paper'
+import { DocumentPaper, DOC_TYPE_LABELS, parseDesign } from '../document-paper'
+import { PaperSizeSelector, type PaperSize } from '../doc-blocks'
 import type { BranchMemberItem, ClubDocumentItem, OfficeData } from '../types'
+
+/** يقرأ حجم الورقة المحفوظ في تصميم وثيقة (A4 افتراضياً) */
+function docPaperSize(designJson: string | undefined): PaperSize {
+  return parseDesign(designJson ?? '').paperSize === 'A5' ? 'A5' : 'A4'
+}
 
 /** المناصب الهرمية الرسمية — نفس ترتيب الإدارة العامة */
 const POSITIONS = [
@@ -477,6 +483,8 @@ const DOC_ICONS: Record<ClubDocumentItem['type'], React.ComponentType<{ classNam
 
 export function BranchDocumentsManager({ data }: { data: OfficeData }) {
   const [viewDoc, setViewDoc] = useState<ClubDocumentItem | null>(null)
+  // حجم ورقة العرض/الطباعة — يتذكّر اختيار الوثيقة (A4 افتراضياً)
+  const [viewSize, setViewSize] = useState<PaperSize>('A4')
   const [typeFilter, setTypeFilter] = useState('all')
   const documents = data.documents ?? []
 
@@ -526,7 +534,10 @@ export function BranchDocumentsManager({ data }: { data: OfficeData }) {
             return (
               <li key={doc.id}>
                 <button
-                  onClick={() => setViewDoc(doc)}
+                  onClick={() => {
+                    setViewSize(docPaperSize(doc.design))
+                    setViewDoc(doc)
+                  }}
                   className="w-full text-right p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors"
                 >
                   <div className="h-11 w-11 rounded-xl bg-(--club-light) flex items-center justify-center shrink-0">
@@ -569,7 +580,12 @@ export function BranchDocumentsManager({ data }: { data: OfficeData }) {
           </DialogHeader>
           {viewDoc && (
             <>
-              <DocumentPaper doc={viewDoc} />
+              {/* محدد حجم الورقة A4/A5 — يطبّق على المعاينة والطباعة معاً */}
+              <div className="doc-print-hide flex items-center justify-between gap-2 pb-2">
+                <span className="text-xs font-bold text-muted-foreground">حجم الورقة:</span>
+                <PaperSizeSelector value={viewSize} onChange={setViewSize} />
+              </div>
+              <DocumentPaper doc={viewDoc} paperSize={viewSize} />
               <div className="flex justify-end gap-2 doc-print-hide">
                 <Button variant="outline" onClick={() => setViewDoc(null)}>
                   إغلاق

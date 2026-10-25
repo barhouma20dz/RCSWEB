@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/dialog'
 import { ClubLetterhead, PaperWatermark, useLetterheadSettings } from './letterhead-settings'
 import { PrintPortal } from './system-papers'
-import { PrintPageSize } from './doc-blocks'
+import { PrintPageSize, PaperSizeSelector, type PaperSize } from './doc-blocks'
 import { useSiteSettings } from './site-store'
 import { formatDateDMY } from '@/lib/date-format'
 import type { EnrollmentFormFee, EnrollmentFormSettings, SiteSettings } from './types'
@@ -73,6 +73,7 @@ export const DEFAULT_FORM_SETTINGS: EnrollmentFormSettings = {
   showBirthPlace: true,
   showSpecialty: true,
   showBloodType: true,
+  showMunicipalityStamp: true,
 }
 
 /** العبارة المالية الثابتة المطلوبة رسمياً في قسم الرسوم */
@@ -108,6 +109,7 @@ export function mergeFormSettings(raw: unknown): EnrollmentFormSettings {
     showBirthPlace: s.showBirthPlace !== false,
     showSpecialty: s.showSpecialty !== false,
     showBloodType: s.showBloodType !== false,
+    showMunicipalityStamp: s.showMunicipalityStamp !== false,
   }
 }
 
@@ -266,12 +268,15 @@ export function EnrollmentFormPaper({
   settings,
   contact,
   printable = true,
+  paperSize = 'A4',
 }: {
   data: EnrollmentFormData
   settings: EnrollmentFormSettings
   contact?: SiteSettings['contact']
   /** doc-print-area تجعل الورقة مرئية في الطباعة — false داخل معاينة الحوار */
   printable?: boolean
+  /** حجم الورقة حسب اختيار المستخدم — A4 الافتراضي */
+  paperSize?: PaperSize
 }) {
   const [ls] = useLetterheadSettings()
   const isMinor = !!data.parentName.trim()
@@ -294,7 +299,7 @@ export function EnrollmentFormPaper({
 
   return (
     <div
-      className={`doc-paper bg-white w-[680px] max-w-full mx-auto relative ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper bg-white w-[680px] mx-auto relative ${paperSize === 'A5' ? 'max-w-[min(480px,100%)]' : 'max-w-full'} ${printable ? 'doc-print-area' : ''}`}
       dir="rtl"
       style={{ background: '#ffffff', color: '#1c2434' }}
     >
@@ -420,10 +425,19 @@ export function EnrollmentFormPaper({
                   <span className="inline-block w-[70px] border-b border-dotted border-neutral-400" />
                 </span>
               </div>
-              <div className="mt-1.5 h-[46px] border border-dashed border-neutral-400 rounded-sm relative">
-                <span className="absolute top-1 right-2 text-[8px] font-bold text-neutral-400">
-                  إمضاء ولي الأمر
-                </span>
+              <div className="mt-1.5 flex gap-2">
+                <div className="flex-1 h-[50px] border border-dashed border-neutral-400 rounded-sm relative">
+                  <span className="absolute top-1 right-2 text-[8px] font-bold text-neutral-400">
+                    إمضاء ولي الأمر
+                  </span>
+                </div>
+                {settings.showMunicipalityStamp && (
+                  <div className="flex-1 h-[50px] border border-dashed border-neutral-400 rounded-sm relative">
+                    <span className="absolute top-1 right-2 text-[8px] font-bold text-neutral-400">
+                      ختم وإمضاء مصالح البلدية
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -511,16 +525,21 @@ export function EnrollmentFormDialog({
   open,
   onClose,
   initial,
+  allowEdit = false,
 }: {
   open: boolean
   onClose: () => void
   /** يقبل null عندما لا يوجد منخرط مختار بعد (النافذة مغلقة) */
   initial: EnrollmentFormData | null
+  /** إكمال/تصحيح البيانات يظهر فقط لحساب النادي أو الفرع — لا للزوار */
+  allowEdit?: boolean
 }) {
   const settings = useFormSettings()
   const siteSettings = useSiteSettings((s) => s.settings)
   const [data, setData] = useState<EnrollmentFormData | null>(initial)
   const [mode, setMode] = useState<'preview' | 'edit'>('preview')
+  // حجم ورقة الطباعة حسب اختيار المستخدم — A4 الافتراضي
+  const [paperSize, setPaperSize] = useState<PaperSize>('A4')
 
   // مزامنة البيانات عند فتح نافذة جديدة لمنخرط آخر (بلا null داخل الترتيب)
   const key = initial?.id ?? ''
@@ -553,8 +572,8 @@ export function EnrollmentFormDialog({
               استمارة الانخراط الرسمية — {data.fullName || 'منخرط جديد'}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              صفحة A4 واحدة لجميع الرياضات — معاينة حية، ثم الطباعة أو الحفظ بصيغة PDF (اختر
-              «حفظ كـ PDF» في نافذة الطباعة).
+              صفحة واحدة بمقاس A4 أو A5 حسب اختيارك — معاينة حية، ثم الطباعة أو الحفظ بصيغة PDF
+              (اختر «حفظ كـ PDF» في نافذة الطباعة).
             </DialogDescription>
           </DialogHeader>
 
@@ -568,15 +587,19 @@ export function EnrollmentFormDialog({
             >
               <Eye className="h-4 w-4 ml-1" /> المعاينة
             </Button>
-            <Button
-              size="sm"
-              variant={mode === 'edit' ? 'default' : 'outline'}
-              onClick={() => setMode('edit')}
-              className="font-bold"
-            >
-              <Pencil className="h-4 w-4 ml-1" /> إكمال / تصحيح البيانات
-            </Button>
+            {/* إكمال/تصحيح البيانات — لحساب النادي أو الفرع فقط */}
+            {allowEdit && (
+              <Button
+                size="sm"
+                variant={mode === 'edit' ? 'default' : 'outline'}
+                onClick={() => setMode('edit')}
+                className="font-bold"
+              >
+                <Pencil className="h-4 w-4 ml-1" /> إكمال / تصحيح البيانات
+              </Button>
+            )}
             <div className="flex-1" />
+            <PaperSizeSelector value={paperSize} onChange={setPaperSize} />
             <Button
               size="sm"
               onClick={print}
@@ -653,17 +676,17 @@ export function EnrollmentFormDialog({
                 </p>
               </div>
             ) : (
-              <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} />
+              <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* بوابة الطباعة: نسخة الورقة خارج الحوار تُطبع وحدها — A4 عمودي */}
+      {/* بوابة الطباعة: نسخة الورقة خارج الحوار تُطبع وحدها — A4 أو A5 حسب الاختيار */}
       {open && (
         <PrintPortal>
-          <PrintPageSize size="A4" />
-          <EnrollmentFormPaper data={data} settings={settings} contact={contact} />
+          <PrintPageSize size={paperSize} />
+          <EnrollmentFormPaper data={data} settings={settings} contact={contact} paperSize={paperSize} />
         </PrintPortal>
       )}
     </>
