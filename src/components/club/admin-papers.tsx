@@ -87,6 +87,7 @@ import {
   paperSizeFromParams,
   paperWidthClass,
   isA5,
+  paperHalfClass,
   type DocBlock,
   type DocText,
   type PaperSize,
@@ -126,7 +127,7 @@ function PaperShell({
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full ${paperWidthClass(paperSize, wide)} ${isA5(paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(paperSize, wide)} ${isA5(paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${paperHalfClass(paperSize)} ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >

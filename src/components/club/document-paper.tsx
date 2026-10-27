@@ -8,7 +8,7 @@
 import { useMemo } from 'react'
 import { Star } from 'lucide-react'
 import { formatDateDMY } from '@/lib/date-format'
-import { isA5, normalizePaperSize, paperWidthClass, PrintPageSize, type PaperSize } from './doc-blocks'
+import { isA5, normalizePaperSize, paperHalfClass, paperWidthClass, PrintPageSize, type PaperSize } from './doc-blocks'
 import type { ClubDocumentItem } from './types'
 
 export interface DocumentDesign {
@@ -86,7 +86,7 @@ export function DocumentPaper({
       className={`doc-paper doc-print-area mx-auto w-full ${
         compact
           ? 'max-w-[520px] p-5 sm:p-7'
-          : `${paperWidthClass(size)} ${isA5(size) ? 'p-5 sm:p-7' : 'p-6 sm:p-10'}`
+          : `${paperWidthClass(size)} ${isA5(size) ? 'p-5 sm:p-7' : 'p-6 sm:p-10'} ${paperHalfClass(size)}`
       }`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"

@@ -265,11 +265,12 @@ function TrackCard() {
       )}
     </motion.div>
 
-      {/* استمارة الانخراط الرسمية — إعادة الإنشاء لطلب سابق بنفس تحقق الهاتف + اللقب */}
+      {/* استمارة الانخراط الرسمية — إعادة الإنشاء لطلب سابق بنفس تحقق الهاتف + اللقب — بنافذة كاملة */}
       <EnrollmentFormDialog
         open={!!formFor}
         onClose={() => setFormFor(null)}
         initial={formFor}
+        fullWindow
       />
     </>
   )
@@ -312,6 +313,12 @@ export function JoinSection({
   const [birthDate, setBirthDate] = useState('')
   const [birthPlace, setBirthPlace] = useState('')
   const [guardianName, setGuardianName] = useState('')
+  // بيانات ولي الأمر التكميلية (تظهر في الاستمارة المطبوعة — اختيارية)
+  const [guardianBirth, setGuardianBirth] = useState('')
+  const [guardianBirthPlace, setGuardianBirthPlace] = useState('')
+  const [guardianIdCard, setGuardianIdCard] = useState('')
+  const [guardianIdIssueDate, setGuardianIdIssueDate] = useState('')
+  const [guardianIdIssuePlace, setGuardianIdIssuePlace] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [branchId, setBranchId] = useState(preselectedBranchId ?? '')
@@ -335,6 +342,11 @@ export function JoinSection({
     setBirthDate('')
     setBirthPlace('')
     setGuardianName('')
+    setGuardianBirth('')
+    setGuardianBirthPlace('')
+    setGuardianIdCard('')
+    setGuardianIdIssueDate('')
+    setGuardianIdIssuePlace('')
     setAddress('')
     setPhone('')
     setNote('')
@@ -382,6 +394,11 @@ export function JoinSection({
           address,
           phone,
           parentName: isMinor ? guardianName : '',
+          guardianBirth: isMinor ? guardianBirth : '',
+          guardianBirthPlace: isMinor ? guardianBirthPlace : '',
+          guardianIdCard: isMinor ? guardianIdCard : '',
+          guardianIdIssueDate: isMinor ? guardianIdIssueDate : '',
+          guardianIdIssuePlace: isMinor ? guardianIdIssuePlace : '',
           branchId,
           note,
         }),
@@ -404,6 +421,11 @@ export function JoinSection({
             address,
             phone,
             parentName: isMinor ? guardianName : '',
+            guardianBirth: isMinor ? guardianBirth : '',
+            guardianBirthPlace: isMinor ? guardianBirthPlace : '',
+            guardianIdCard: isMinor ? guardianIdCard : '',
+            guardianIdIssueDate: isMinor ? guardianIdIssueDate : '',
+            guardianIdIssuePlace: isMinor ? guardianIdIssuePlace : '',
             createdAt: new Date().toISOString(),
           },
           { name: selectedBranch?.name ?? '', slug: selectedBranch?.slug },
@@ -419,6 +441,9 @@ export function JoinSection({
         isMinor
           ? {
               guardianName: guardianName,
+              guardianBirth: guardianBirth,
+              guardianId: guardianIdCard,
+              guardianIdDate: guardianIdIssueDate,
               address: address,
               childName: `${firstName} ${lastName}`.trim(),
               childBirth: birthDisplay,
@@ -783,6 +808,66 @@ export function JoinSection({
                         />
                       </div>
 
+                      {/* تاريخ ومكان ميلاد ولي الأمر */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="join-guardian-birth">تاريخ ميلاد ولي الأمر (اختياري)</Label>
+                          <Input
+                            id="join-guardian-birth"
+                            type="date"
+                            value={guardianBirth}
+                            onChange={(e) => setGuardianBirth(e.target.value)}
+                            className="mt-1.5"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="join-guardian-birth-place">مكان ميلاده (اختياري)</Label>
+                          <Input
+                            id="join-guardian-birth-place"
+                            value={guardianBirthPlace}
+                            onChange={(e) => setGuardianBirthPlace(e.target.value)}
+                            placeholder="مثال: سعيدة"
+                            className="mt-1.5"
+                          />
+                        </div>
+                      </div>
+
+                      {/* بطاقة التعريف الوطنية لولي الأمر */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-3">
+                          <Label htmlFor="join-guardian-id">رقم بطاقة التعريف الوطنية لولي الأمر (اختياري)</Label>
+                          <Input
+                            id="join-guardian-id"
+                            value={guardianIdCard}
+                            onChange={(e) => setGuardianIdCard(e.target.value)}
+                            placeholder="مثال: 123456789012345678"
+                            dir="ltr"
+                            inputMode="numeric"
+                            className="mt-1.5 text-right"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="join-guardian-id-date">تاريخ الإصدار (اختياري)</Label>
+                          <Input
+                            id="join-guardian-id-date"
+                            type="date"
+                            value={guardianIdIssueDate}
+                            onChange={(e) => setGuardianIdIssueDate(e.target.value)}
+                            className="mt-1.5"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Label htmlFor="join-guardian-id-place">مكان الإصدار (اختياري)</Label>
+                          <Input
+                            id="join-guardian-id-place"
+                            value={guardianIdIssuePlace}
+                            onChange={(e) => setGuardianIdIssuePlace(e.target.value)}
+                            placeholder="مثال: سعيدة"
+                            className="mt-1.5"
+                          />
+                        </div>
+                      </div>
+
                       {/* العنوان */}
                       <div>
                         <Label htmlFor="join-guardian-address">{t('join.address')}</Label>
@@ -925,11 +1010,12 @@ export function JoinSection({
         publicMode
       />
 
-      {/* استمارة الانخراط الرسمية — فور نجاح التسجيل */}
+      {/* استمارة الانخراط الرسمية — فور نجاح التسجيل — بنافذة كاملة تُظهر الورقة كاملة */}
       <EnrollmentFormDialog
         open={formOpen && !!doneForm}
         onClose={() => setFormOpen(false)}
         initial={doneForm}
+        fullWindow
       />
     </section>
   )

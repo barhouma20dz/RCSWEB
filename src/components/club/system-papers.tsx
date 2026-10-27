@@ -62,6 +62,7 @@ import {
   makeDocText,
   paperWidthClass,
   isA5,
+  paperHalfClass,
   normalizePaperSize,
   DEFAULT_PAPER_SIZE,
   type DocBlock,
@@ -187,7 +188,7 @@ export function ParentAuthorizationPaper({
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full ${paperWidthClass(d.paperSize ?? DEFAULT_PAPER_SIZE)} ${isA5(d.paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(d.paperSize ?? DEFAULT_PAPER_SIZE)} ${isA5(d.paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${paperHalfClass(d.paperSize ?? DEFAULT_PAPER_SIZE)} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -495,7 +496,7 @@ export function TrainingRequestPaper({
   const blocks = blocksFromJson(data.bodyBlocks, data.body)
   return (
     <div
-      className={`doc-paper mx-auto w-full ${paperWidthClass(data.paperSize)} ${isA5(data.paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(data.paperSize)} ${isA5(data.paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${paperHalfClass(data.paperSize)} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >

@@ -20,6 +20,11 @@ export interface EnrollmentFormPayload {
     address: string
     phone: string
     parentName: string
+    guardianBirth: string
+    guardianBirthPlace: string
+    guardianIdCard: string
+    guardianIdIssueDate: string
+    guardianIdIssuePlace: string
     note: string
     status: string
     createdAt: string
@@ -75,6 +80,11 @@ export async function buildEnrollmentFormPayload(
       address: e.address,
       phone: e.phone,
       parentName: e.parentName,
+      guardianBirth: e.guardianBirth ?? '',
+      guardianBirthPlace: e.guardianBirthPlace ?? '',
+      guardianIdCard: e.guardianIdCard ?? '',
+      guardianIdIssueDate: e.guardianIdIssueDate ?? '',
+      guardianIdIssuePlace: e.guardianIdIssuePlace ?? '',
       note: e.note,
       status: e.status,
       createdAt: e.createdAt.toISOString(),

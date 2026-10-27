@@ -259,6 +259,11 @@ model Enrollment {
   specialty        String   @default("") // التخصص أو الفئة الرياضية
   bloodType        String   @default("") // فصيلة الدم (اختياري — لاستمارة الانخراط)
   parentName       String   @default("") // الاسم الكامل لولي الأمر (للأقل من 18 سنة)
+  guardianBirth        String @default("") // تاريخ ميلاد ولي الأمر
+  guardianBirthPlace   String @default("") // مكان ميلاد ولي الأمر
+  guardianIdCard       String @default("") // رقم بطاقة التعريف الوطنية لولي الأمر
+  guardianIdIssueDate  String @default("") // تاريخ إصدار البطاقة
+  guardianIdIssuePlace String @default("") // مكان إصدار البطاقة
   note             String   @default("")
   status           String   @default("pending") // pending | accepted | rejected
   branchId         String

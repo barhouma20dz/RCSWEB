@@ -558,17 +558,53 @@ export function PaperSizeSelector({
 }
 
 /**
- * مقاس واتجاه صفحة الطباعة — يُحقن داخل بوابة الطباعة ليخرج PDF/الورق بالورقة الفعلية:
- * A4 طولي/عرضي أو A5 طولي/عرضي.
+ * مقاس واتجاه صفحة الطباعة — بأوضاع توفير الورق المطلوبة رسمياً:
+ * — A4 طولي: ورقة A4 طولية كاملة
+ * — A4 عرضي: ورقة A4 عرضية كاملة (تُقلب الورقة لتناسب الحجم)
+ * — A5 طولي: يُطبع على ورقة A4 عرضية — الاستمارة تأخذ جهة من الجهتين (اليمين)
+ *   ليبقى النصف الآخر صالحاً للاستعمال
+ * — A5 عرضي: يُطبع على ورقة A4 طولية — يبدأ من بداية الورقة (أعلاها)
+ *   ليبقى نصفها السفلي صالحاً للاستعمال
  */
 export function PrintPageSize({ size }: { size: PaperSize }) {
-  const css: Record<PaperSize, string> = {
+  const page: Record<PaperSize, string> = {
     'A4-portrait': '@page { size: A4 portrait; margin: 10mm 9mm; }',
     'A4-landscape': '@page { size: A4 landscape; margin: 10mm 12mm; }',
-    'A5-portrait': '@page { size: A5 portrait; margin: 9mm 7mm; }',
-    'A5-landscape': '@page { size: A5 landscape; margin: 9mm 10mm; }',
+    // A5 طولي = الجهة اليمنى من ورقة A4 عرضية
+    'A5-portrait': '@page { size: A4 landscape; margin: 8mm; }',
+    // A5 عرضي = النصف العلوي من ورقة A4 طولية
+    'A5-landscape': '@page { size: A4 portrait; margin: 8mm 9mm; }',
   }
-  return <style>{css[size] ?? css['A4-portrait']}</style>
+  // أوضاع نصف الورقة — تثبيت الاستمارة في جهتها المخصصة داخل الورقة الكاملة
+  const halfCss =
+    size === 'A5-portrait'
+      ? `@media print {
+  .doc-paper.doc-half-side {
+    width: 140mm !important;
+    max-width: 140mm !important;
+    margin-right: 0 !important;
+    margin-left: auto !important;
+  }
+  .doc-only-print .doc-paper.doc-half-side {
+    width: 140mm !important;
+    max-width: 140mm !important;
+    margin-right: 0 !important;
+    margin-left: auto !important;
+  }
+  .doc-print-area.doc-half-side {
+    width: 140mm !important;
+    max-width: 140mm !important;
+    left: auto !important;
+    right: 0 !important;
+  }
+}`
+      : ''
+  return <style>{(page[size] ?? page['A4-portrait']) + halfCss}</style>
+}
+
+/** صنف الطباعة لنصف الورقة — يُضاف إلى عنصر الورقة (A5 طولي = الجهة اليمنى من A4 عرضي) */
+export function paperHalfClass(size: PaperSize): string {
+  return size === 'A5-portrait' ? 'doc-half-side' : ''
 }
 
 /** عرض الورقة في المعاينة بحسب المقاس والاتجاه

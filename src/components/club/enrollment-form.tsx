@@ -18,7 +18,7 @@
  *   حساب الإدارة العامة → إعدادات الموقع → استمارة الانخراط → «الاستمارة المطبوعة A4»
  */
 
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Loader2,
   Plus,
@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dialog'
 import { ClubLetterhead, PaperWatermark, useLetterheadSettings } from './letterhead-settings'
 import { PrintPortal } from './system-papers'
-import { PrintPageSize, PaperSizeSelector, type PaperSize } from './doc-blocks'
+import { PrintPageSize, PaperSizeSelector, paperHalfClass, type PaperSize } from './doc-blocks'
 import { useSiteSettings } from './site-store'
 import { formatDateDMY } from '@/lib/date-format'
 import type {
@@ -74,7 +74,9 @@ export const DEFAULT_FORM_SETTINGS: EnrollmentFormSettings = {
   // (قديم — للتوافق فقط، لم يعد يُطبع)
   fees: {},
   // رسوم الاشتراك الرسمية — نوعان حسب الفئة العمرية (تُعدَّل المبالغ من حساب الإدارة)
-  feeTiers: { enabled: true, under14: 1300, above14: 1500 },
+  feeTiers: { enabled: true, under14: 1300, above14: 1500, insurance: 500 },
+  // تفعيل/تعطيل الرسوم حسب الفرع — يضبطه الفرع من إعداداته أو الإدارة من إعدادات الموقع
+  feeByBranch: {},
   bankInfo: '',
   showBirthPlace: true,
   showSpecialty: true,
@@ -117,7 +119,7 @@ export function mergeFormSettings(raw: unknown): EnrollmentFormSettings {
       }
     }
   }
-  // رسوم الاشتراك — نوعان حسب الفئة العمرية (قيم افتراضية رسمية عند الغياب)
+  // رسوم الاشتراك — نوعان حسب الفئة العمرية + التأمين (قيم افتراضية رسمية عند الغياب)
   const t = (s.feeTiers ?? {}) as Partial<EnrollmentFeeTiers>
   const feeTiers: EnrollmentFeeTiers = {
     enabled: t.enabled !== false,
@@ -129,9 +131,21 @@ export function mergeFormSettings(raw: unknown): EnrollmentFormSettings {
       typeof t.above14 === 'number' && t.above14 >= 0
         ? t.above14
         : DEFAULT_FORM_SETTINGS.feeTiers.above14,
+    insurance:
+      typeof t.insurance === 'number' && t.insurance >= 0
+        ? t.insurance
+        : DEFAULT_FORM_SETTINGS.feeTiers.insurance,
   }
+  // تفعيل/تعطيل الرسوم حسب الفرع (يتجاوز الافتراض العام)
+  const feeByBranch: Record<string, boolean> =
+    s.feeByBranch && typeof s.feeByBranch === 'object'
+      ? Object.fromEntries(
+          Object.entries(s.feeByBranch).filter(([, v]) => typeof v === 'boolean')
+        )
+      : {}
   return {
     feeTiers,
+    feeByBranch,
     rules: Array.isArray(s.rules) ? s.rules.filter((r) => typeof r === 'string' && r.trim()) : [...DEFAULT_FORM_SETTINGS.rules],
     parentalText: typeof s.parentalText === 'string' ? s.parentalText : DEFAULT_FORM_SETTINGS.parentalText,
     medicalDefault: typeof s.medicalDefault === 'string' ? s.medicalDefault : '',
@@ -173,6 +187,12 @@ export interface EnrollmentFormData {
   address: string
   phone: string
   parentName: string // '' للبالغ — القسم الأبوي يظهر فقط عند امتلائه
+  /** بيانات ولي الأمر التكميلية (تُطبع بخطوط منقطة عند غيابها) */
+  guardianBirth: string // تاريخ ميلاد ولي الأمر
+  guardianBirthPlace: string // مكان ميلاده
+  guardianIdCard: string // رقم بطاقة التعريف الوطنية
+  guardianIdIssueDate: string // تاريخ إصدار البطاقة
+  guardianIdIssuePlace: string // مكان إصدار البطاقة
   bloodType: string
   specialty: string
   branchName: string
@@ -199,6 +219,11 @@ export function enrollmentFromItem(
     address: string
     phone: string
     parentName: string
+    guardianBirth?: string
+    guardianBirthPlace?: string
+    guardianIdCard?: string
+    guardianIdIssueDate?: string
+    guardianIdIssuePlace?: string
     note?: string
     createdAt: string
   },
@@ -218,6 +243,11 @@ export function enrollmentFromItem(
     address: e.address ?? '',
     phone: e.phone ?? '',
     parentName: e.parentName ?? '',
+    guardianBirth: e.guardianBirth ?? '',
+    guardianBirthPlace: e.guardianBirthPlace ?? '',
+    guardianIdCard: e.guardianIdCard ?? '',
+    guardianIdIssueDate: e.guardianIdIssueDate ?? '',
+    guardianIdIssuePlace: e.guardianIdIssuePlace ?? '',
     bloodType: e.bloodType ?? '',
     specialty: e.specialty ?? '',
     branchName: branch.name,
@@ -317,12 +347,16 @@ export function EnrollmentFormPaper({
 }) {
   const [ls] = useLetterheadSettings()
   const isMinor = !!data.parentName.trim()
-  // رسوم الاشتراك — نوعان حسب الفئة العمرية (يُحدد مبلغ المنخرط آلياً حسب سنه)
+  // رسوم الاشتراك — نوعان حسب الفئة العمرية + التأمين (يُحدد مبلغ المنخرط آلياً حسب سنه)
+  // وإظهار القسم حسب الفرع: تفعيل/تعطيل من الفرع أو الإدارة — وإلا الافتراض العام
   const tiers = settings.feeTiers
-  const feeOn = tiers.enabled
+  const feeOn = (data.branchSlug && data.branchSlug in settings.feeByBranch
+    ? settings.feeByBranch[data.branchSlug]
+    : tiers.enabled) ?? tiers.enabled
+  const ins = tiers.insurance || 0
   const age = ageAt(data.birthDate, data.createdAt)
   const isUnder14 = age !== null && age < 14
-  const myFee = age !== null ? (isUnder14 ? tiers.under14 : tiers.above14) : null
+  const myFee = age !== null ? (isUnder14 ? tiers.under14 : tiers.above14) + ins : null
   const myTierLabel = isUnder14 ? TIER_UNDER14_LABEL : TIER_ABOVE14_LABEL
   const medicalHint = (data.branchSlug && settings.medicalByBranch[data.branchSlug]) || settings.medicalDefault
   const genderLabel = data.gender === 'female' ? 'أنثى' : data.gender === 'male' ? 'ذكر' : ''
@@ -338,12 +372,25 @@ export function EnrollmentFormPaper({
 
   return (
     <div
-      className={`doc-paper bg-white mx-auto relative ${paperSize === 'A4-landscape' ? 'w-[960px]' : 'w-[680px]'} ${paperSize === 'A5-portrait' ? 'max-w-[min(480px,100%)]' : ''} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper bg-white mx-auto relative ${paperSize === 'A4-landscape' ? 'w-[960px]' : 'w-[680px]'} ${paperSize === 'A5-portrait' ? 'max-w-[min(480px,100%)]' : ''} ${paperHalfClass(paperSize)} ${printable ? 'doc-print-area' : ''}`}
       dir="rtl"
       style={{ background: '#ffffff', color: '#1c2434' }}
     >
       <PaperWatermark />
-      <div className="relative px-[26px] py-[18px] flex flex-col" style={{ minHeight: '940px' }}>
+      {/* ارتفاع أدنى حسب المقاس — A5 عرضي = نصف ورقة A4 طولية فيسقط النصف السفلي صالحاً للاستعمال */}
+      <div
+        className="relative px-[26px] py-[18px] flex flex-col"
+        style={{
+          minHeight:
+            paperSize === 'A4-portrait'
+              ? '940px'
+              : paperSize === 'A4-landscape'
+                ? '700px'
+                : paperSize === 'A5-portrait'
+                  ? '680px'
+                  : '520px',
+        }}
+      >
         {/* ===== رأس الاستمارة ===== */}
         <ClubLetterhead />
         <div className="text-center mt-2">
@@ -389,7 +436,12 @@ export function EnrollmentFormPaper({
             <InfoCell label="تاريخ التسجيل" value={formatDateDMY(data.createdAt)} dir="ltr" />
             {isMinor && (
               <>
-                <InfoCell label="الاسم واللقب لولي الأمر" value={data.parentName} />
+                <InfoCell label="الاسم واللقب لولي الأمر" value={data.parentName} wide />
+                <InfoCell label="تاريخ ميلاد ولي الأمر" value={formatDateDMY(data.guardianBirth)} dir="ltr" />
+                <InfoCell label="مكان ميلاد ولي الأمر" value={data.guardianBirthPlace} />
+                <InfoCell label="رقم بطاقة التعريف الوطنية لولي الأمر" value={data.guardianIdCard} dir="ltr" />
+                <InfoCell label="تاريخ إصدار البطاقة" value={formatDateDMY(data.guardianIdIssueDate)} dir="ltr" />
+                <InfoCell label="مكان إصدار البطاقة" value={data.guardianIdIssuePlace} />
                 <InfoCell label="هاتف ولي الأمر" value={data.phone} dir="ltr" />
               </>
             )}
@@ -406,7 +458,7 @@ export function EnrollmentFormPaper({
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">يشهد بأن السيد(ة):</span>
+                <span className="shrink-0">أشهد بأن السيد(ة):</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {data.fullName}
                 </span>
@@ -423,7 +475,11 @@ export function EnrollmentFormPaper({
                 </span>
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">بأن لا وجود لأي خطر لممارسة رياضة:</span>
+                <span className="shrink-0">بأن لا وجود أي خطر لممارسة رياضة:</span>
+                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
+              </div>
+              <div className="flex items-end gap-1">
+                <span className="shrink-0">وتُذكر الرياضة المحددة:</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {data.branchName}
                 </span>
@@ -513,7 +569,13 @@ export function EnrollmentFormPaper({
                   style={isUnder14 ? { borderColor: ls.accentColor, borderWidth: 1.5 } : { borderColor: 'rgb(229 229 229)' }}
                 >
                   <div className="text-[8.5px] font-bold text-neutral-500">{TIER_UNDER14_LABEL}</div>
-                  <div className="text-[12px] font-black text-neutral-900">{fmtDz(tiers.under14 || 0)}</div>
+                  <div className="text-[12px] font-black text-neutral-900">
+                    {fmtDz(tiers.under14 || 0)}
+                    {ins > 0 && <span className="text-[9px] font-bold"> + مصاريف التأمين {fmtDz(ins)}</span>}
+                  </div>
+                  <div className="text-[10px] font-black" style={{ color: ls.accentColor }}>
+                    ({fmtDz((tiers.under14 || 0) + ins)})
+                  </div>
                   {isUnder14 && (
                     <div className="text-[7.5px] font-black" style={{ color: ls.accentColor }}>
                         فئة المنخرط(ة)
@@ -529,7 +591,13 @@ export function EnrollmentFormPaper({
                   }
                 >
                   <div className="text-[8.5px] font-bold text-neutral-500">{TIER_ABOVE14_LABEL}</div>
-                  <div className="text-[12px] font-black text-neutral-900">{fmtDz(tiers.above14 || 0)}</div>
+                  <div className="text-[12px] font-black text-neutral-900">
+                    {fmtDz(tiers.above14 || 0)}
+                    {ins > 0 && <span className="text-[9px] font-bold"> + مصاريف التأمين {fmtDz(ins)}</span>}
+                  </div>
+                  <div className="text-[10px] font-black" style={{ color: ls.accentColor }}>
+                    ({fmtDz((tiers.above14 || 0) + ins)})
+                  </div>
                   {age !== null && !isUnder14 && (
                     <div className="text-[7.5px] font-black" style={{ color: ls.accentColor }}>
                       فئة المنخرط(ة)
@@ -545,6 +613,7 @@ export function EnrollmentFormPaper({
                       {fmtDz(myFee)}
                     </span>{' '}
                     — الفئة: <span className="font-black">{myTierLabel}</span>
+                    {ins > 0 && <span className="text-[9px] text-neutral-500"> (يشمل مصاريف التأمين {fmtDz(ins)})</span>}
                     {age !== null && <span className="text-[9px] text-neutral-500"> (السن: {age} سنة)</span>}
                   </>
                 ) : (
@@ -608,11 +677,45 @@ export function EnrollmentFormPaper({
 // نافذة المعاينة والطباعة — معاينة حية + إكمال الحقول الناقصة + طباعة/حفظ PDF
 // ==================================================================
 
+/** غلاف معاينة يُكبّر/يُصغّر الورقة لتناسب المساحة المتاحة — تظهر الاستمارة كاملة بلا تمرير */
+function FitPreview({ children }: { children: React.ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    const inner = innerRef.current
+    if (!host || !inner) return
+    const fit = () => {
+      const w = inner.offsetWidth
+      const h = inner.offsetHeight
+      if (!w || !h) return
+      const next = Math.min(1, (host.clientWidth - 12) / w, (host.clientHeight - 12) / h)
+      setScale(next > 0 ? next : 1)
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(host)
+    ro.observe(inner)
+    return () => ro.disconnect()
+  }, [])
+
+  return (
+    <div ref={hostRef} className="w-full h-full flex items-start justify-center overflow-hidden">
+      <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export function EnrollmentFormDialog({
   open,
   onClose,
   initial,
   allowEdit = false,
+  fullWindow = false,
 }: {
   open: boolean
   onClose: () => void
@@ -620,6 +723,8 @@ export function EnrollmentFormDialog({
   initial: EnrollmentFormData | null
   /** إكمال/تصحيح البيانات يظهر فقط لحساب النادي أو الفرع — لا للزوار */
   allowEdit?: boolean
+  /** نافذة كاملة تُظهر ورقة الاستمارة كاملة — تُستخدم فور التسجيل من الموقع العام */
+  fullWindow?: boolean
 }) {
   const settings = useFormSettings()
   const siteSettings = useSiteSettings((s) => s.settings)
@@ -652,7 +757,14 @@ export function EnrollmentFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-[980px] w-[96vw] max-h-[94vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent
+          className={
+            fullWindow
+              ? 'w-[100vw] max-w-[100vw] sm:max-w-[100vw] h-[100vh] max-h-[100vh] rounded-none sm:rounded-none top-0 left-0 translate-x-0 translate-y-0 border-0 overflow-hidden flex flex-col'
+              : 'max-w-[980px] w-[96vw] max-h-[94vh] overflow-hidden flex flex-col'
+          }
+          dir="rtl"
+        >
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 text-base">
               <FileDown className="h-5 w-5 text-(--club)" />
@@ -696,9 +808,9 @@ export function EnrollmentFormDialog({
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto nice-scroll doc-print-host bg-neutral-100 dark:bg-neutral-900 p-3 rounded-lg">
+          <div className={`doc-print-host bg-neutral-100 dark:bg-neutral-900 rounded-lg ${fullWindow ? 'flex-1 min-h-0 p-2' : 'flex-1 overflow-y-auto nice-scroll p-3'}`}>
             {mode === 'edit' ? (
-              <div className="max-w-[640px] mx-auto space-y-3">
+              <div className="max-w-[640px] mx-auto space-y-3 overflow-y-auto nice-scroll h-full">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <Label className="text-xs font-bold">الاسم واللقب</Label>
@@ -756,12 +868,42 @@ export function EnrollmentFormDialog({
                       placeholder="اتركه فارغاً للمنخرط البالغ"
                     />
                   </div>
+                  {data.parentName.trim() && (
+                    <>
+                      <div className="sm:col-span-2 -mx-1 mt-1 border-t border-(--border)" />
+                      <div className="sm:col-span-2 text-[11px] font-black text-(--club-dark)">معلومات ولي الأمر (تظهر في الاستمارة المطبوعة)</div>
+                      <div>
+                        <Label className="text-xs font-bold">تاريخ ميلاد ولي الأمر</Label>
+                        <Input value={data.guardianBirth} onChange={(e) => set({ guardianBirth: e.target.value })} className="mt-1 bg-white text-right" dir="ltr" placeholder="YYYY-MM-DD" />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold">مكان ميلاد ولي الأمر</Label>
+                        <Input value={data.guardianBirthPlace} onChange={(e) => set({ guardianBirthPlace: e.target.value })} className="mt-1 bg-white text-right" />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold">رقم بطاقة التعريف الوطنية</Label>
+                        <Input value={data.guardianIdCard} onChange={(e) => set({ guardianIdCard: e.target.value })} className="mt-1 bg-white text-right" dir="ltr" />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold">تاريخ إصدار البطاقة</Label>
+                        <Input value={data.guardianIdIssueDate} onChange={(e) => set({ guardianIdIssueDate: e.target.value })} className="mt-1 bg-white text-right" dir="ltr" placeholder="YYYY-MM-DD" />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold">مكان إصدار البطاقة</Label>
+                        <Input value={data.guardianIdIssuePlace} onChange={(e) => set({ guardianIdIssuePlace: e.target.value })} className="mt-1 bg-white text-right" />
+                      </div>
+                    </>
+                  )}
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed border border-(--border) rounded-lg p-2.5 bg-white">
                   هذه النافذة تصحّح بيانات الاستمارة المطبوعة فقط ولا تغيّر ملف المنخرط في قاعدة
                   البيانات. الحقول الفارغة تُطبع بخطوط منقّطة للتعبئة اليدوية.
                 </p>
               </div>
+            ) : fullWindow ? (
+              <FitPreview>
+                <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
+              </FitPreview>
             ) : (
               <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
             )}

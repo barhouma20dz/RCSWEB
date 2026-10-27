@@ -92,6 +92,11 @@ export interface EnrollmentItem {
   address: string // العنوان (للبالغ أو عنوان ولي الأمر للقاصر)
   phone: string // الهاتف (للبالغ أو هاتف ولي الأمر للقاصر)
   parentName: string // ولي الأمر (للقاصر)
+  guardianBirth?: string // تاريخ ميلاد ولي الأمر
+  guardianBirthPlace?: string // مكان ميلاد ولي الأمر
+  guardianIdCard?: string // رقم بطاقة التعريف الوطنية لولي الأمر
+  guardianIdIssueDate?: string // تاريخ إصدار البطاقة
+  guardianIdIssuePlace?: string // مكان إصدار البطاقة
   note: string
   status: string
   createdAt: string
@@ -247,9 +252,10 @@ export interface EnrollmentFormFee {
 
 /** رسوم الاشتراك الرسمية — نوعان حسب الفئة العمرية للمنخرط */
 export interface EnrollmentFeeTiers {
-  enabled: boolean // إظهار قسم الرسوم في الاستمارة المطبوعة
-  under14: number // الرسوم لأقل من 14 سنة (دج)
-  above14: number // الرسوم لسن 14 فما فوق (دج)
+  enabled: boolean // إظهار قسم الرسوم في الاستمارة المطبوعة (الافتراض العام لكل الفروع)
+  under14: number // رسوم الاشتراك لأقل من 14 سنة (دج)
+  above14: number // رسوم الاشتراك لسن 14 فما فوق (دج)
+  insurance: number // مصاريف التأمين المضافة على الفئتين (دج)
 }
 
 export interface EnrollmentFormSettings {
@@ -258,7 +264,8 @@ export interface EnrollmentFormSettings {
   medicalDefault: string // إرشاد إضافي يُطبع داخل مربع الشهادة الطبية (اختياري)
   medicalByBranch: Record<string, string> // إرشاد خاص بكل فرع (اختياري)
   fees: Record<string, EnrollmentFormFee> // (قديم — للتوافق فقط، لم يعد يُطبع)
-  feeTiers: EnrollmentFeeTiers // رسوم الاشتراك — نوعان: أقل من 14 سنة / 14 سنة فما فوق
+  feeTiers: EnrollmentFeeTiers // رسوم الاشتراك — نوعان: أقل من 14 سنة / 14 سنة فما فوق + التأمين
+  feeByBranch: Record<string, boolean> // تفعيل/تعطيل الرسوم حسب الفرع (يتجاوز الافتراض العام — يضبطه الفرع أو الإدارة)
   bankInfo: string // معلومات الحساب البنكي للجمعية (اختياري)
   showBirthPlace: boolean // إظهار حقل مكان الميلاد
   showSpecialty: boolean // إظهار حقل التخصص/الفئة

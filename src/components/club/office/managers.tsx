@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Loader2,
   Plus,
@@ -497,6 +497,11 @@ export function EnrollmentsManager({ data, reload }: Office) {
         address: d.enrollment.address,
         phone: d.enrollment.phone,
         parentName: d.enrollment.parentName,
+        guardianBirth: d.enrollment.guardianBirth ?? '',
+        guardianBirthPlace: d.enrollment.guardianBirthPlace ?? '',
+        guardianIdCard: d.enrollment.guardianIdCard ?? '',
+        guardianIdIssueDate: d.enrollment.guardianIdIssueDate ?? '',
+        guardianIdIssuePlace: d.enrollment.guardianIdIssuePlace ?? '',
         bloodType: d.enrollment.bloodType ?? '',
         specialty: d.enrollment.specialty ?? '',
         branchName: d.branch.name,
@@ -1047,6 +1052,47 @@ export function SettingsManager({ data, reload }: Office) {
   const [motto, setMotto] = useState(data.branch.motto)
   const [description, setDescription] = useState(data.branch.description)
 
+  // رسوم الاشتراك حسب الفرع — تفعيل/تعطيل إظهار قسم الرسوم في استمارة هذا الفرع
+  const [feeEnabled, setFeeEnabled] = useState<boolean | null>(null)
+  const [feeOverride, setFeeOverride] = useState<boolean | null>(null)
+  const [feeSaving, setFeeSaving] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    apiFetch('/api/office/enroll-fee')
+      .then(async (r) => {
+        if (!alive || !r.ok) return
+        const d = await r.json()
+        setFeeEnabled(!!d.enabled)
+        setFeeOverride(typeof d.override === 'boolean' ? d.override : null)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const toggleFee = async (v: boolean) => {
+    setFeeSaving(true)
+    setFeeEnabled(v)
+    try {
+      const res = await apiFetch('/api/office/enroll-fee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: v }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'فشل التحديث')
+      setFeeOverride(v)
+      toast({ title: v ? 'تم تفعيل إظهار الرسوم في استمارة هذا الفرع ✅' : 'تم تعطيل إظهار الرسوم في استمارة هذا الفرع' })
+    } catch (e) {
+      setFeeEnabled(!v)
+      toast({ title: (e as Error).message, variant: 'destructive' })
+    } finally {
+      setFeeSaving(false)
+    }
+  }
+
   const save = async () => {
     setSaving(true)
     const r = await officeItem('update', 'settings', { data: { motto, description } })
@@ -1068,6 +1114,41 @@ export function SettingsManager({ data, reload }: Office) {
         </Field>
         <SaveButton saving={saving} onClick={save} label="حفظ الإعدادات" />
       </div>
+
+      {/* رسوم الاشتراك حسب الفرع — تفعيل/تعطيل من طرف الفرع نفسه */}
+      <div className="mt-5 rounded-2xl border border-(--border) bg-white p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <FileDown className="h-5 w-5 text-primary" />
+          <h3 className="font-black">رسوم الاشتراك في استمارة الانخراط</h3>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+          فعّل أو عطّل إظهار قسم رسوم الاشتراك في الاستمارة المطبوعة لهذا الفرع
+          (أقل من 14 سنة / 14 سنة فما فوق مع مصاريف التأمين). يمكن لإدارة النادي ضبط
+          الإعدادات نفسها من إعدادات الموقع.
+        </p>
+        <div className="flex items-center justify-between rounded-xl border border-(--border) p-3.5">
+          <div>
+            <div className="font-bold text-sm">إظهار قسم الرسوم في استمارة هذا الفرع</div>
+            {feeOverride === null && feeEnabled !== null && (
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                الحالة الحالية من الإعداد العام للنادي — غيّرها لتجاوزه لهذا الفرع فقط
+              </div>
+            )}
+            {feeOverride !== null && (
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                إعداد خاص بهذا الفرع (يتجاوز الإعداد العام)
+              </div>
+            )}
+          </div>
+          <Switch
+            checked={feeEnabled === true}
+            disabled={feeSaving || feeEnabled === null}
+            onCheckedChange={(v) => void toggleFee(v)}
+            aria-label="تفعيل رسوم الاشتراك لهذا الفرع"
+          />
+        </div>
+      </div>
+
       <div className="mt-5">
         <OfficePasswordCard />
       </div>

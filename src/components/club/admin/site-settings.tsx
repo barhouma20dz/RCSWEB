@@ -734,8 +734,10 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
                   <span className="font-black text-sm text-(--club-dark)">رسوم الاشتراك — نوعان حسب الفئة العمرية</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground px-4 py-2 leading-relaxed border-b border-(--border)">
-                  تُطبّق الرسوم على جميع الرياضات، ويُحدّد مبلغ المنخرط(ة) آلياً في الاستمارة حسب
-                  سنه عند تاريخ التسجيل: أقل من 14 سنة / 14 سنة فما فوق. عدّل المبلغين بالدينار.
+                  يُحدّد مبلغ المنخرط(ة) آلياً في الاستمارة حسب سنه عند تاريخ التسجيل:
+                  أقل من 14 سنة / 14 سنة فما فوق، ويُضاف عليه مصاريف التأمين
+                  (مثال: 1 300 دج + التأمين 500 دج = 1 800 دج). عدّل المبالغ بالدينار،
+                  وتفعيل القسم لكل فرع من قائمة الفروع أدناه أو من إعدادات الفرع نفسه.
                 </p>
                 <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
                   <label className="flex items-center gap-2 text-xs font-bold text-(--club-dark) cursor-pointer">
@@ -808,6 +810,73 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
                     />
                     دج
                   </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold">
+                    مصاريف التأمين
+                    <Input
+                      type="number"
+                      min={0}
+                      dir="ltr"
+                      className="w-24 h-8 text-right"
+                      value={mergeFormSettings(draft.enrollment?.form).feeTiers.insurance}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: {
+                              ...mergeFormSettings(draft.enrollment?.form),
+                              feeTiers: {
+                                ...mergeFormSettings(draft.enrollment?.form).feeTiers,
+                                insurance: Math.max(0, Number(e.target.value) || 0),
+                              },
+                            },
+                          },
+                        })
+                      }
+                    />
+                    دج
+                  </label>
+                </div>
+
+                {/* تفعيل/تعطيل الرسوم حسب الفرع — يضبطه الفرع من إعداداته أو الإدارة من هنا */}
+                <div className="px-4 py-3 border-t border-(--border)">
+                  <div className="text-xs font-black text-(--club-dark) mb-2">
+                    تفعيل الرسوم حسب الفرع — يتجاوز الإعداد العام
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {data.branches.map((b) => {
+                      const eff =
+                        mergeFormSettings(draft.enrollment?.form).feeByBranch[b.slug] ??
+                        mergeFormSettings(draft.enrollment?.form).feeTiers.enabled
+                      return (
+                        <div key={b.id} className="flex items-center justify-between gap-2 rounded-xl border border-(--border) px-3 py-2">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: b.color }} aria-hidden />
+                            <span className="text-xs font-bold truncate">{b.name}</span>
+                          </span>
+                          <Switch
+                            checked={eff}
+                            onCheckedChange={(v) =>
+                              setDraft({
+                                ...draft,
+                                enrollment: {
+                                  ...draft.enrollment,
+                                  form: {
+                                    ...mergeFormSettings(draft.enrollment?.form),
+                                    feeByBranch: {
+                                      ...mergeFormSettings(draft.enrollment?.form).feeByBranch,
+                                      [b.slug]: v,
+                                    },
+                                  },
+                                },
+                              })
+                            }
+                            aria-label={`تفعيل الرسوم لفرع ${b.name}`}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
                 <div className="px-4 py-2.5 border-t border-(--border) bg-neutral-50">
                   <div className="space-y-1.5">

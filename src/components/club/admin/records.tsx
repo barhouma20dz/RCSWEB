@@ -72,7 +72,7 @@ import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { DocumentPaper, parseDesign, type DocumentDesign } from '../document-paper'
 import { parseSystemDesign } from '../system-papers'
-import { PaperSizeSelector, PrintPageSize, isA5, normalizePaperSize, type PaperSize } from '../doc-blocks'
+import { PaperSizeSelector, PrintPageSize, isA5, normalizePaperSize, paperHalfClass, type PaperSize } from '../doc-blocks'
 import { AdminPaperLibrarySection, SystemPaperView } from '../admin-papers'
 import type {
   AdminData,
@@ -448,7 +448,7 @@ function IssuedPaper({
           : paperSize === 'A4-landscape'
             ? 'max-w-[1010px]'
             : 'max-w-[760px]'
-      } px-[4.5%] py-[3.5%]`}
+      } ${paperHalfClass(paperSize)} px-[4.5%] py-[3.5%]`}
       style={{ ['--doc-accent' as string]: '#9a7a25', containerType: 'inline-size' }}
     >
       {/* مقاس واتجاه صفحة الطباعة الفعلي — 4 خيارات */}
