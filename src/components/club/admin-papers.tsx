@@ -88,6 +88,7 @@ import {
   paperWidthClass,
   isA5,
   paperHalfClass,
+  normalizePaperSize,
   type DocBlock,
   type DocText,
   type PaperSize,
@@ -555,7 +556,7 @@ export function TimeScheduleDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <TimeSchedulePaper data={data} />
         </PrintPortal>
@@ -1167,7 +1168,7 @@ export function WorkContractDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <WorkContractPaper data={data} />
         </PrintPortal>
@@ -1396,7 +1397,7 @@ export function WorkResumptionDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <WorkResumptionPaper data={data} />
         </PrintPortal>
@@ -1606,7 +1607,7 @@ export function TransportRequestDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <TransportRequestPaper data={data} />
         </PrintPortal>
@@ -1837,7 +1838,7 @@ export function BordereauDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <BordereauPaper data={data} />
         </PrintPortal>
@@ -2041,7 +2042,7 @@ export function ActivityCertificateDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <ActivityCertificatePaper data={data} />
         </PrintPortal>
@@ -2224,7 +2225,8 @@ export function SubsidyRequestDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={normalizePaperSize(d.paperSize)}>
+          <PrintPageSize size={normalizePaperSize(d.paperSize)} />
           <SubsidyRequestPaper data={d} />
         </PrintPortal>
       )}
@@ -2410,7 +2412,7 @@ export function ReceiptDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={data.paperSize}>
           <PrintPageSize size={data.paperSize} />
           <ReceiptPaper data={data} />
         </PrintPortal>

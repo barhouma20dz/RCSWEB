@@ -42,7 +42,14 @@ import {
 } from '@/components/ui/dialog'
 import { ClubLetterhead, PaperWatermark, useLetterheadSettings } from './letterhead-settings'
 import { PrintPortal } from './system-papers'
-import { PrintPageSize, PaperSizeSelector, paperHalfClass, type PaperSize } from './doc-blocks'
+import {
+  PaperSizeSelector,
+  PrintPageSize,
+  SheetPreview,
+  preparePrintFit,
+  paperHalfClass,
+  type PaperSize,
+} from './doc-blocks'
 import { useSiteSettings } from './site-store'
 import { formatDateDMY } from '@/lib/date-format'
 import type {
@@ -372,14 +379,15 @@ export function EnrollmentFormPaper({
 
   return (
     <div
-      className={`doc-paper bg-white mx-auto relative ${paperSize === 'A4-landscape' ? 'w-[960px]' : 'w-[680px]'} ${paperSize === 'A5-portrait' ? 'max-w-[min(480px,100%)]' : ''} ${paperHalfClass(paperSize)} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper bg-white mx-auto relative max-w-full ${paperSize === 'A4-landscape' ? 'w-[960px]' : 'w-[680px]'} ${paperSize === 'A5-portrait' ? 'max-w-[min(480px,100%)]' : ''} ${paperHalfClass(paperSize)} ${printable ? 'doc-print-area' : ''}`}
       dir="rtl"
       style={{ background: '#ffffff', color: '#1c2434' }}
     >
       <PaperWatermark />
-      {/* ارتفاع أدنى حسب المقاس — A5 عرضي = نصف ورقة A4 طولية فيسقط النصف السفلي صالحاً للاستعمال */}
+      {/* ارتفاع أدنى حسب المقاس — A5 عرضي = نصف ورقة A4 طولية فيسقط النصف السفلي صالحاً للاستعمال
+          — doc-print-fit: عنصر الملاءمة التلقائية للطباعة (صفحة واحدة دائماً) */}
       <div
-        className="relative px-[26px] py-[18px] flex flex-col"
+        className="doc-print-fit relative px-[26px] py-[18px] flex flex-col"
         style={{
           minHeight:
             paperSize === 'A4-portrait'
@@ -458,13 +466,13 @@ export function EnrollmentFormPaper({
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">أشهد بأن السيد(ة):</span>
+                <span className="shrink-0">يشهد بأن السيد(ة):</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {data.fullName}
                 </span>
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">المولود(ة) بتاريخ ومكان:</span>
+                <span className="shrink-0">المولود (ة) بتاريخ ومكان:</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {[
                     formatDateDMY(data.birthDate),
@@ -475,11 +483,11 @@ export function EnrollmentFormPaper({
                 </span>
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">بأن لا وجود أي خطر لممارسة رياضة:</span>
+                <span className="shrink-0">بأن لا وجود لأي خطر لممارسة رياضة:</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">وتُذكر الرياضة المحددة:</span>
+                <span className="shrink-0">وتذكر الرياضة المحددة:</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {data.branchName}
                 </span>
@@ -750,7 +758,13 @@ export function EnrollmentFormDialog({
   if (!open || !initial || !data) return null
 
   const print = () => {
-    // البوابة ترندر نسخة الطباعة خارج الحوار ثم نفتح حوار الطباعة/حفظ PDF
+    // ملاءمة الورقة أولاً (صفحة واحدة دائماً بالمقاس والاتجاه المختارين)
+    // ثم البوابة ترندر نسخة الطباعة خارج الحوار ونفتح حوار الطباعة/حفظ PDF
+    try {
+      preparePrintFit(paperSize)
+    } catch {
+      /* الطباعة تكمل بلا ملاءمة عند أي فشل في القياس */
+    }
     window.print()
   }
 
@@ -771,31 +785,33 @@ export function EnrollmentFormDialog({
               استمارة الانخراط الرسمية — {data.fullName || 'منخرط جديد'}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              مقاس الورقة حسب اختيارك — A4 أو A5 طولية أو عرضية — معاينة حية، ثم الطباعة أو الحفظ بصيغة PDF
-              (اختر «حفظ كـ PDF» في نافذة الطباعة).
+              أربعة خيارات للورقة: A4 طولية / A4 عرضية / A5 طولية / A5 عرضية — المعاينة تطابق الطباعة
+              تماماً (صفحة واحدة دائماً)، وأوضاع A5 تُطبع على نصف ورقة A4 لتوفير الورق.
             </DialogDescription>
           </DialogHeader>
 
           {/* أدوات */}
           <div className="shrink-0 flex flex-wrap items-center gap-2 border-y border-(--border) py-2">
-            <Button
-              size="sm"
-              variant={mode === 'preview' ? 'default' : 'outline'}
-              onClick={() => setMode('preview')}
-              className="font-bold"
-            >
-              <Eye className="h-4 w-4 ml-1" /> المعاينة
-            </Button>
-            {/* إكمال/تصحيح البيانات — لحساب النادي أو الفرع فقط */}
+            {/* المعاينة/التصحيح — التصحيح لحساب النادي أو الفرع فقط */}
             {allowEdit && (
-              <Button
-                size="sm"
-                variant={mode === 'edit' ? 'default' : 'outline'}
-                onClick={() => setMode('edit')}
-                className="font-bold"
-              >
-                <Pencil className="h-4 w-4 ml-1" /> إكمال / تصحيح البيانات
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant={mode === 'preview' ? 'default' : 'outline'}
+                  onClick={() => setMode('preview')}
+                  className="font-bold"
+                >
+                  <Eye className="h-4 w-4 ml-1" /> المعاينة
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mode === 'edit' ? 'default' : 'outline'}
+                  onClick={() => setMode('edit')}
+                  className="font-bold"
+                >
+                  <Pencil className="h-4 w-4 ml-1" /> إكمال / تصحيح البيانات
+                </Button>
+              </>
             )}
             <div className="flex-1" />
             <PaperSizeSelector value={paperSize} onChange={setPaperSize} />
@@ -807,6 +823,12 @@ export function EnrollmentFormDialog({
               <Printer className="h-4 w-4 ml-1" /> طباعة / حفظ PDF
             </Button>
           </div>
+
+          {/* إعدادات نافذة الطباعة بالمتصفح لأفضل نتيجة */}
+          <p className="shrink-0 text-[10.5px] font-bold text-muted-foreground leading-relaxed px-1">
+            في نافذة الطباعة بالمتصفح: اختر «المقاس A4» و «الهوامش: بلا / None»، وألغِ
+            «الترويسة والتذييل / Headers and footers»، وفعّل «رسومات الخلفية / Background graphics».
+          </p>
 
           <div className={`doc-print-host bg-neutral-100 dark:bg-neutral-900 rounded-lg ${fullWindow ? 'flex-1 min-h-0 p-2' : 'flex-1 overflow-y-auto nice-scroll p-3'}`}>
             {mode === 'edit' ? (
@@ -902,10 +924,16 @@ export function EnrollmentFormDialog({
               </div>
             ) : fullWindow ? (
               <FitPreview>
-                <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
+                <SheetPreview size={paperSize}>
+                  <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
+                </SheetPreview>
               </FitPreview>
             ) : (
-              <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
+              <div className="w-full flex justify-center py-2">
+                <SheetPreview size={paperSize}>
+                  <EnrollmentFormPaper data={data} settings={settings} contact={contact} printable={false} paperSize={paperSize} />
+                </SheetPreview>
+              </div>
             )}
           </div>
         </DialogContent>
@@ -913,7 +941,7 @@ export function EnrollmentFormDialog({
 
       {/* بوابة الطباعة: نسخة الورقة خارج الحوار تُطبع وحدها — بالمقاس والاتجاه المختارين */}
       {open && (
-        <PrintPortal>
+        <PrintPortal size={paperSize}>
           <PrintPageSize size={paperSize} />
           <EnrollmentFormPaper data={data} settings={settings} contact={contact} paperSize={paperSize} />
         </PrintPortal>

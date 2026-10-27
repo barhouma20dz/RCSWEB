@@ -15,7 +15,7 @@
  * كل الأوراق تطبع بمقاس نظيف عبر آلية doc-print-area القائمة.
  */
 
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Loader2,
@@ -64,6 +64,7 @@ import {
   isA5,
   paperHalfClass,
   normalizePaperSize,
+  preparePrintFit,
   DEFAULT_PAPER_SIZE,
   type DocBlock,
   type DocText,
@@ -80,14 +81,40 @@ export { seasonLabel }
 /**
  * بوابة الطباعة: تُرندر نسخة الورقة على مستوى document.body (خارج نافذة الحوار)
  * حتى لا يقصّها أي سلف أثناء الطباعة — تظهر في الوسائط المطبوعة فقط.
+ *
+ * عند تمرير `size` تُجهّز الملاءمة التلقائية (صفحة واحدة دائماً) قبل كل طباعة
+ * عبر حدث beforeprint — يغطي كل أزرار الطباعة وأيضاً Ctrl+P.
  */
-export function PrintPortal({ children }: { children: React.ReactNode }) {
+export function PrintPortal({ children, size }: { children: React.ReactNode; size?: PaperSize }) {
   // كشف التركيب من دون setState داخل effect (متوافق مع SSR وقواعد React)
   const mounted = useSyncExternalStore(
     subscribeNoop,
     () => true,
     () => false
   )
+
+  useEffect(() => {
+    if (!mounted || !size) return
+    const prepare = () => {
+      try {
+        preparePrintFit(size)
+      } catch {
+        /* الطباعة تكمل بلا ملاءمة عند أي فشل في القياس */
+      }
+    }
+    window.addEventListener('beforeprint', prepare)
+    // احتياط للمتصفحات التي لا تطلق beforeprint مع window.print()
+    const mq = window.matchMedia('print')
+    const onChange = () => {
+      if (mq.matches) prepare()
+    }
+    mq.addEventListener?.('change', onChange)
+    return () => {
+      window.removeEventListener('beforeprint', prepare)
+      mq.removeEventListener?.('change', onChange)
+    }
+  }, [mounted, size])
+
   if (!mounted) return null
   return createPortal(<div className="doc-only-print">{children}</div>, document.body)
 }
@@ -450,7 +477,7 @@ export function ParentAuthorizationDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={paperSize}>
           <PrintPageSize size={paperSize} />
           <ParentAuthorizationPaper data={d} />
         </PrintPortal>
@@ -798,7 +825,7 @@ export function TrainingRequestDialog({
         </div>
       </DialogContent>
       {open && (
-        <PrintPortal>
+        <PrintPortal size={paperSize}>
           <PrintPageSize size={paperSize} />
           <TrainingRequestPaper data={data} />
         </PrintPortal>

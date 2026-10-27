@@ -16,6 +16,7 @@
  *   والأوراق القديمة تُعرض بالإعدادات الافتراضية دون أي كسر.
  */
 
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import {
   AlignCenter,
   AlignJustify,
@@ -32,6 +33,7 @@ import {
   File,
   RectangleVertical,
   RectangleHorizontal,
+  Scissors,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -557,54 +559,329 @@ export function PaperSizeSelector({
   )
 }
 
+
+
 /**
- * مقاس واتجاه صفحة الطباعة — بأوضاع توفير الورق المطلوبة رسمياً:
- * — A4 طولي: ورقة A4 طولية كاملة
- * — A4 عرضي: ورقة A4 عرضية كاملة (تُقلب الورقة لتناسب الحجم)
- * — A5 طولي: يُطبع على ورقة A4 عرضية — الاستمارة تأخذ جهة من الجهتين (اليمين)
- *   ليبقى النصف الآخر صالحاً للاستعمال
- * — A5 عرضي: يُطبع على ورقة A4 طولية — يبدأ من بداية الورقة (أعلاها)
- *   ليبقى نصفها السفلي صالحاً للاستعمال
+ * صنف ورقة الطباعة — يُضاف إلى عنصر الورقة ويحدد وضع الطباعة الكامل:
+ * ورقة كاملة A4 طولية/عرضية، أو نصف ورقة (أوضاع توفير الورق) — انظر PrintPageSize
+ */
+export function paperHalfClass(size: PaperSize): string {
+  switch (size) {
+    case 'A5-portrait':
+      return 'doc-sheet-a5-portrait'
+    case 'A5-landscape':
+      return 'doc-sheet-a5-landscape'
+    case 'A4-landscape':
+      return 'doc-sheet-a4-landscape'
+    default:
+      return 'doc-sheet-a4-portrait'
+  }
+}
+
+// ==================================================================
+// محرك الطباعة الدقيق — أوراق ثابتة بالمليمتر + ملاءمة تلقائية صفحة واحدة
+// ==================================================================
+
+/** التحويل مم ← بكسل (مقياس CSS المعتمد للطباعة 96dpi) */
+export const MM_PX = 96 / 25.4
+
+/**
+ * منطقة المحتوى المتاحة داخل الورقة لكل مقاس (مم): [العرض، الارتفاع]
+ * = أبعاد الورقة الفعلية ناقص الحشوة الداخلية الآمنة للطابعات
+ */
+export const PRINT_CONTENT_AREA: Record<PaperSize, [number, number]> = {
+  'A4-portrait': [194, 283],    // 210−2×8 ، 297−2×7
+  'A4-landscape': [279, 196],   // 297−2×9 ، 210−2×7
+  'A5-landscape': [194, 138.5], // النصف العلوي من A4 طولية: 210−2×8 ، 148.5−2×5
+  'A5-portrait': [136.5, 200],  // الجهة اليمنى من A4 عرضية: 148.5−2×6 ، 210−2×5
+}
+
+/** الحشوة الداخلية للورقة المطبوعة لكل مقاس (مم) */
+export const PRINT_SHEET_PADDING: Record<PaperSize, string> = {
+  'A4-portrait': '7mm 8mm',
+  'A4-landscape': '7mm 9mm',
+  'A5-landscape': '5mm 8mm',
+  'A5-portrait': '5mm 6mm',
+}
+
+/** مجموع الحشوة الرأسية لكل مقاس (مم) — علوي + سفلي */
+export const PRINT_SHEET_PAD_TOTAL: Record<PaperSize, number> = {
+  'A4-portrait': 14,
+  'A4-landscape': 14,
+  'A5-landscape': 10,
+  'A5-portrait': 10,
+}
+
+/**
+ * تجهيز الطباعة: يقيس ارتفاع المحتوى الطبيعي بنفس عرض الطباعة الفعلي
+ * ويضبط معامل التصغير ليملأ الورقة المختارة في صفحة واحدة دائماً —
+ * تصغير ضوئي موحّد (كالنسخ على الآلة المصغّرة) يحافظ على التناسب عبر transform: scale
+ * (محرك طباعة Chrome يتجاهل zoom لذا يعتمد التحويل مع ارتفاع صريح للورقة).
+ */
+export function preparePrintFit(size: PaperSize): void {
+  const host = document.querySelector('.doc-only-print') as HTMLElement | null
+  if (!host) return
+  const paper = host.querySelector('.doc-paper') as HTMLElement | null
+  if (!paper) return
+  const fitEl = paper.querySelector('.doc-print-fit') as HTMLElement | null
+  if (!fitEl) {
+    paper.style.setProperty('--doc-fit-scale', '1')
+    return
+  }
+  const [, hmm] = PRINT_CONTENT_AREA[size]
+  const wmm = PRINT_CONTENT_AREA[size][0]
+  const prevHost = host.getAttribute('style') ?? ''
+  const prevPaper = paper.getAttribute('style') ?? ''
+  const prevFit = fitEl.getAttribute('style') ?? ''
+  let scale = 1
+  let naturalH = 0
+  try {
+    // اعرض البوابة مؤقتاً خارج الشاشة بنفس تخطيط الطباعة بالضبط للقياس
+    host.style.cssText =
+      'display:block!important;position:fixed!important;left:-30000px!important;top:0!important;margin:0!important;visibility:hidden!important;pointer-events:none!important;'
+    paper.style.cssText = `position:absolute!important;top:0!important;right:0!important;margin:0!important;width:${wmm}mm!important;max-width:none!important;min-height:0!important;height:auto!important;padding:${PRINT_SHEET_PADDING[size]}!important;`
+    fitEl.style.minHeight = '0'
+    fitEl.style.transform = 'none'
+    naturalH = fitEl.offsetHeight
+    const availH = hmm * MM_PX
+    // هامش أمان 0.5% يمنع فيض بكسلات التقريب إلى صفحة ثانية
+    scale = naturalH > 0 ? Math.min(1, (availH * 0.995) / naturalH) : 1
+  } finally {
+    if (prevHost) host.setAttribute('style', prevHost)
+    else host.removeAttribute('style')
+    if (prevPaper) paper.setAttribute('style', prevPaper)
+    else paper.removeAttribute('style')
+    if (prevFit) fitEl.setAttribute('style', prevFit)
+    else fitEl.removeAttribute('style')
+  }
+  // نضبط القيم بعد الاستعادة حتى لا تمسحها إعادة الأنماط الأصلية
+  paper.style.setProperty('--doc-fit-scale', scale < 0.999 ? scale.toFixed(4) : '1')
+  // ارتفاع الورقة الكلي بالمليمتر: المحتوى مصغّراً (أو الحد الأدنى لمنطقة المحتوى) + الحشوة الرأسية
+  const minHmm = PRINT_CONTENT_AREA[size][1]
+  const sheetHmm = Math.max((naturalH * scale) / MM_PX, minHmm) + PRINT_SHEET_PAD_TOTAL[size]
+  paper.style.setProperty('--doc-sheet-h', `${(sheetHmm * MM_PX).toFixed(1)}px`)
+}
+
+/**
+ * مقاس واتجاه صفحة الطباعة — محرك دقيق بأوضاع توفير الورق المطلوبة رسمياً:
+ *
+ * — A4 طولي: ورقة A4 طولية كاملة (210×297مم)
+ * — A4 عرضي: ورقة A4 عرضية كاملة (297×210مم)
+ * — A5 عرضي: يُطبع في النصف العلوي من ورقة A4 طولية — الاستمارة ملتصقة ببداية
+ *   الورقة (أعلى-يمين RTL) والنصف السفلي فارغ تماماً ليُقص ويُستعمل مرة أخرى
+ * — A5 طولي: يُطبع في الجهة اليمنى من ورقة A4 عرضية — ملتصقاً بالحافة اليمنى
+ *   والجهة الأخرى تبقى فارغة صالحة للاستعمال
+ *
+ * — @page { margin: 0 } والتحكم الكامل داخل الورقة بالمليمتر
+ * — print-color-adjust: exact للحفاظ على الألوان والحدود والخلفيات
+ * — منع كسر الصفحة: الاستمارة صفحة واحدة دائماً (ملاءمة تلقائية zoom-fit)
  */
 export function PrintPageSize({ size }: { size: PaperSize }) {
   const page: Record<PaperSize, string> = {
-    'A4-portrait': '@page { size: A4 portrait; margin: 10mm 9mm; }',
-    'A4-landscape': '@page { size: A4 landscape; margin: 10mm 12mm; }',
-    // A5 طولي = الجهة اليمنى من ورقة A4 عرضية
-    'A5-portrait': '@page { size: A4 landscape; margin: 8mm; }',
+    'A4-portrait': 'A4 portrait',
+    'A4-landscape': 'A4 landscape',
     // A5 عرضي = النصف العلوي من ورقة A4 طولية
-    'A5-landscape': '@page { size: A4 portrait; margin: 8mm 9mm; }',
+    'A5-landscape': 'A4 portrait',
+    // A5 طولي = الجهة اليمنى من ورقة A4 عرضية
+    'A5-portrait': 'A4 landscape',
   }
-  // أوضاع نصف الورقة — تثبيت الاستمارة في جهتها المخصصة داخل الورقة الكاملة
-  const halfCss =
-    size === 'A5-portrait'
-      ? `@media print {
-  .doc-paper.doc-half-side {
-    width: 140mm !important;
-    max-width: 140mm !important;
-    margin-right: 0 !important;
-    margin-left: auto !important;
+  const css = `@page { size: ${page[size] ?? page['A4-portrait']}; margin: 0; }
+@media print {
+  *, *::before, *::after {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
-  .doc-only-print .doc-paper.doc-half-side {
-    width: 140mm !important;
-    max-width: 140mm !important;
-    margin-right: 0 !important;
-    margin-left: auto !important;
+  .doc-paper {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
-  .doc-print-area.doc-half-side {
-    width: 140mm !important;
-    max-width: 140mm !important;
-    left: auto !important;
+  /* الأوراق المتدفقة (العقد متعددة الصفحات) تبقى قابلة للامتداد عبر صفحات */
+  .doc-paper.doc-paper-flow {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  /* الملاءمة التلقائية: تصغير ضوئي موحّد ليملأ الورقة في صفحة واحدة دائماً
+     (transform: scale — محرك الطباعة يتجاهل zoom) */
+  .doc-paper:not(.doc-paper-flow) > .doc-print-fit {
+    transform: scale(var(--doc-fit-scale, 1)) !important;
+    transform-origin: top right !important;
+  }
+  /* ===== ورقة كاملة A4 طولية ===== */
+  .doc-paper.doc-sheet-a4-portrait:not(.doc-paper-flow),
+  .doc-only-print .doc-paper.doc-sheet-a4-portrait:not(.doc-paper-flow) {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 296.8mm !important;
+    padding: ${PRINT_SHEET_PADDING['A4-portrait']} !important;
+    height: var(--doc-sheet-h, auto) !important;
+    overflow: hidden !important;
+    top: 0 !important;
     right: 0 !important;
+    left: auto !important;
+    margin: 0 !important;
+  }
+  .doc-paper.doc-sheet-a4-portrait:not(.doc-paper-flow) > .doc-print-fit {
+    min-height: 283mm !important;
+  }
+  /* ===== ورقة كاملة A4 عرضية ===== */
+  .doc-paper.doc-sheet-a4-landscape:not(.doc-paper-flow),
+  .doc-only-print .doc-paper.doc-sheet-a4-landscape:not(.doc-paper-flow) {
+    width: 297mm !important;
+    max-width: 297mm !important;
+    min-height: 209.8mm !important;
+    padding: ${PRINT_SHEET_PADDING['A4-landscape']} !important;
+    height: var(--doc-sheet-h, auto) !important;
+    overflow: hidden !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    margin: 0 !important;
+  }
+  .doc-paper.doc-sheet-a4-landscape:not(.doc-paper-flow) > .doc-print-fit {
+    min-height: 196mm !important;
+  }
+  /* ===== A5 عرضي = النصف العلوي من ورقة A4 طولية — النصف السفلي فارغ تماماً ===== */
+  .doc-paper.doc-sheet-a5-landscape:not(.doc-paper-flow),
+  .doc-only-print .doc-paper.doc-sheet-a5-landscape:not(.doc-paper-flow) {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 148.3mm !important;
+    padding: ${PRINT_SHEET_PADDING['A5-landscape']} !important;
+    height: var(--doc-sheet-h, auto) !important;
+    overflow: hidden !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    margin: 0 !important;
+  }
+  .doc-paper.doc-sheet-a5-landscape:not(.doc-paper-flow) > .doc-print-fit {
+    min-height: 138.5mm !important;
+  }
+  /* ===== A5 طولي = الجهة اليمنى من ورقة A4 عرضية — الجهة الأخرى فارغة ===== */
+  .doc-paper.doc-sheet-a5-portrait:not(.doc-paper-flow),
+  .doc-only-print .doc-paper.doc-sheet-a5-portrait:not(.doc-paper-flow) {
+    width: 148.5mm !important;
+    max-width: 148.5mm !important;
+    min-height: 209.8mm !important;
+    padding: ${PRINT_SHEET_PADDING['A5-portrait']} !important;
+    height: var(--doc-sheet-h, auto) !important;
+    overflow: hidden !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    margin: 0 !important;
+  }
+  .doc-paper.doc-sheet-a5-portrait:not(.doc-paper-flow) > .doc-print-fit {
+    min-height: 200mm !important;
   }
 }`
-      : ''
-  return <style>{(page[size] ?? page['A4-portrait']) + halfCss}</style>
+  return <style>{css}</style>
 }
 
-/** صنف الطباعة لنصف الورقة — يُضاف إلى عنصر الورقة (A5 طولي = الجهة اليمنى من A4 عرضي) */
-export function paperHalfClass(size: PaperSize): string {
-  return size === 'A5-portrait' ? 'doc-half-side' : ''
+// ==================================================================
+// معاينة طباعة حقيقية — ورقة كاملة كما ستُطبع بالضبط (شاشة فقط)
+// ==================================================================
+
+/**
+ * معاينة الطباعة الحقيقية: تعرض ورقة الطباعة الكاملة حسب الخيار المختار —
+ * أوضاع نصف الورقة تُظهر النصف الفارغ مع خط القص، مع نفس التصغير التلقائي
+ * الذي سيُطبّق عند الطباعة (Print Preview حقيقي).
+ */
+export function SheetPreview({ size, children }: { size: PaperSize; children: ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [, setZoomTick] = useState(1)
+
+  // نفس آلية الملاءمة التلقائية للطباعة — معاينة تطابق الناتج المطبوع
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    const paper = host.querySelector('.doc-paper') as HTMLElement | null
+    const fitEl = paper?.querySelector('.doc-print-fit') as HTMLElement | null
+    if (!paper || !fitEl) return
+    const sheetWmm = size === 'A4-landscape' ? 297 : size === 'A5-portrait' ? 148.5 : 210
+    const [, chmm] = PRINT_CONTENT_AREA[size]
+    const measure = () => {
+      const pxPerMm = paper.offsetWidth / sheetWmm
+      if (!pxPerMm || !isFinite(pxPerMm)) return
+      const availH = chmm * pxPerMm
+      const prevMin = fitEl.style.minHeight
+      const prevTransform = fitEl.style.transform
+      fitEl.style.minHeight = '0'
+      fitEl.style.transform = 'none'
+      const naturalH = fitEl.offsetHeight
+      fitEl.style.minHeight = prevMin
+      fitEl.style.transform = prevTransform
+      const z = naturalH > 0 ? Math.min(1, (availH * 0.995) / naturalH) : 1
+      const cur = parseFloat(paper.style.getPropertyValue('--doc-fit-scale') || '1')
+      if (!isFinite(cur) || Math.abs(cur - z) > 0.002) {
+        paper.style.setProperty('--doc-fit-scale', z < 0.999 ? z.toFixed(4) : '1')
+        setZoomTick((t) => t + 1)
+      }
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(paper)
+    ro.observe(fitEl)
+    return () => ro.disconnect()
+  }, [size])
+
+  const sheet =
+    size === 'A4-landscape' || size === 'A5-portrait'
+      ? { ratio: '297 / 210', maxW: 960 }
+      : { ratio: '210 / 297', maxW: 680 }
+
+  // ورقة الطباعة الكاملة بنسبها الحقيقية — المحتوى داخلها بنفس التصغير التلقائي للطباعة
+  // عرض صريح (مع maxWidth: 100%) حتى تبقى النسب محددة داخل حاويات fit-to-screen
+  return (
+    <div
+      ref={hostRef}
+      className="sheet-preview relative mx-auto overflow-hidden rounded-md bg-white shadow-xl ring-1 ring-black/10"
+      style={{ aspectRatio: sheet.ratio, width: sheet.maxW, maxWidth: '100%' }}
+      dir="rtl"
+    >
+      {size === 'A5-portrait' ? (
+        <>
+          <div className="absolute inset-y-0 right-0 w-1/2">{children}</div>
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 flex w-px items-center" aria-hidden>
+            <Scissors className="h-3.5 w-3.5 rotate-90 -translate-x-1/2 text-neutral-300" />
+          </div>
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 flex w-1/2 items-center justify-center p-4 text-center text-[10px] font-bold leading-relaxed text-neutral-300"
+            aria-hidden
+          >
+            الجهة الأخرى من الورقة تبقى فارغة — صالحة للاستعمال
+          </div>
+        </>
+      ) : (
+        <>
+          {children}
+          {size === 'A5-landscape' && (
+            <>
+              <div
+                className="pointer-events-none absolute inset-x-0 flex items-center gap-1.5 px-3"
+                style={{ top: '50%' }}
+                aria-hidden
+              >
+                <span className="h-px flex-1 border-t-2 border-dashed border-neutral-200" />
+                <Scissors className="h-3.5 w-3.5 -scale-x-100 text-neutral-300" />
+                <span className="h-px flex-1 border-t-2 border-dashed border-neutral-200" />
+              </div>
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-[10px] font-bold text-neutral-300"
+                aria-hidden
+              >
+                النصف السفلي من الورقة يبقى فارغاً — يُقص ويُستعمل مرة أخرى
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 
 /** عرض الورقة في المعاينة بحسب المقاس والاتجاه

@@ -390,15 +390,22 @@ html.light .logo-glow {
 .doc-only-print {
   display: none;
 }
+/* معاينة الطباعة الحقيقية (شاشة): نفس التصغير التلقائي الذي يُطبّق عند الطباعة،
+   والورقة تظهر بلا ظل داخل الورقة الكاملة */
+.sheet-preview .doc-paper {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.sheet-preview .doc-paper > .doc-print-fit {
+  transform: scale(var(--doc-fit-scale, 1));
+  transform-origin: top right;
+}
 @media print {
   .doc-only-print {
     display: block !important;
   }
-  /* ملاءمة ورقة A4: عرض مضبوط يمنع الانزلاق إلى صفحة ثانية */
-  .doc-only-print .doc-paper {
-    width: 93% !important;
-    max-width: none !important;
-  }
+  /* أبعاد الورقة الثابتة بالمليمتر تأتي من PrintPageSize حسب الخيار المختار
+     (ورقة كاملة أو نصف ورقة لتوفير الورق) — لا عرض نسبي هنا */
   /* عند وجود بوابة الطباعة: أخفِ كل عناصر الصفحة كلياً (لا مجرد بصرياً)
      حتى لا تمتد الصفحات الفارغة في التقسيم — البوابة وحدها تُطبع */
   body:has(.doc-only-print) > *:not(.doc-only-print) {

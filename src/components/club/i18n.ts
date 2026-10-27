@@ -175,7 +175,7 @@ const ar = {
 
   // تتبع الطلب
   'track.title': 'تتبع حالة طلبك',
-  'track.desc': 'أدخل رقم هاتفك ولقبك (كما سجلت بهما) للاستعلام عن حالة طلبك — حماية لخصوصيتك',
+  'track.desc': 'تتبع حالة طلبك بلقب المنخرط ورقم هاتفه — أو هاتف الولي إذا كان المنخرط قاصراً (كما سجلت بهما) — حماية لخصوصيتك',
   'track.lastName': 'اللقب (كما في الطلب)',
   'track.search': 'بحث',
   'track.searching': 'جارٍ البحث...',
@@ -409,7 +409,7 @@ const fr: typeof ar = {
   'join.again': 'Envoyer une autre demande',
 
   'track.title': "Suivre l'état de ma demande",
-  'track.desc': 'Saisissez votre numéro de téléphone et votre nom (tels que saisis lors de l’inscription) — protection de votre vie privée',
+  'track.desc': "Suivez votre demande avec le nom et le téléphone de l\u2019adhérent — ou le téléphone du tuteur si l\u2019adhérent est mineur (tels que saisis lors de l\u2019inscription) — protection de votre vie privée",
   'track.lastName': 'Nom (comme dans la demande)',
   'track.search': 'Rechercher',
   'track.searching': 'Recherche...',
@@ -641,7 +641,7 @@ const en: typeof ar = {
   'join.again': 'Send another request',
 
   'track.title': 'Track your request',
-  'track.desc': 'Enter the phone number and last name you registered with — to protect your privacy',
+  'track.desc': 'Track your request with the member\u2019s last name and phone — or the guardian\u2019s phone if the member is a minor (as submitted) — to protect your privacy',
   'track.lastName': 'Last name (as submitted)',
   'track.search': 'Search',
   'track.searching': 'Searching...',
