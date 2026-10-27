@@ -10,7 +10,7 @@
  *     • سطر جديد داخل نفس النص أو الحقل (Enter → سطر جديد يُطبع كما هو)
  *     • ترتيب النصوص يدوياً (أعلى / أسفل) وإضافة وحذف الفقرات
  *     • عنوان الوثيقة: نص قابل للتحرير + محاذاة وحجم وخط عريض
- *     • تحديد حجم الورقة A4 / A5 (يُطبَّق على المعاينة وعلى الطباعة @page)
+ *     • حجم الورقة واتجاهها — 4 خيارات: A4 طولي/عرضي، A5 طولي/عرضي (المعاينة والطباعة @page)
  *
  * — التنسيق يُحفظ مع الوثيقة المؤرشفة (JSON في params) وتُعاد بناؤه عند العرض،
  *   والأوراق القديمة تُعرض بالإعدادات الافتراضية دون أي كسر.
@@ -30,6 +30,8 @@ import {
   Trash2,
   FileText,
   File,
+  RectangleVertical,
+  RectangleHorizontal,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -39,7 +41,43 @@ import { Textarea } from '@/components/ui/textarea'
 // ==================================================================
 
 export type TextAlign = 'right' | 'center' | 'left' | 'justify'
-export type PaperSize = 'A4' | 'A5'
+
+/** مقاس الورقة مع اتجاهها — أربعة خيارات: A4 طولي، A4 عرضي، A5 طولي، A5 عرضي */
+export type PaperSize = 'A4-portrait' | 'A4-landscape' | 'A5-portrait' | 'A5-landscape'
+
+/** الحجم الافتراضي — A4 طولي */
+export const DEFAULT_PAPER_SIZE: PaperSize = 'A4-portrait'
+
+/** هل الورقة من عائلة A5؟ */
+export function isA5(s: PaperSize | undefined | null): boolean {
+  return s === 'A5-portrait' || s === 'A5-landscape'
+}
+
+/** هل الورقة عرضية (Landscape)؟ */
+export function isLandscape(s: PaperSize | undefined | null): boolean {
+  return s === 'A4-landscape' || s === 'A5-landscape'
+}
+
+/**
+ * تطبيع القيمة المحفوظة إلى أحد المقاسات الأربعة:
+ * الأوراق القديمة كانت تحفظ 'A4' / 'A5' (طولي دائماً) — تُحوّل تلقائياً دون أي كسر.
+ */
+export function normalizePaperSize(v: unknown): PaperSize {
+  switch (v) {
+    case 'A4':
+    case 'A4-portrait':
+      return 'A4-portrait'
+    case 'A4-landscape':
+      return 'A4-landscape'
+    case 'A5':
+    case 'A5-portrait':
+      return 'A5-portrait'
+    case 'A5-landscape':
+      return 'A5-landscape'
+    default:
+      return DEFAULT_PAPER_SIZE
+  }
+}
 
 /** نص واحد منسق (عنوان وثيقة، سطر افتتاحي، موضوع…) */
 export interface DocText {
@@ -140,9 +178,9 @@ export function blocksToPlain(blocks: DocBlock[]): string {
     .trim()
 }
 
-/** حجم ورقة من معاملات مؤرشفة */
+/** مقاس واتجاه ورقة من معاملات مؤرشفة (يتحمل القيم القديمة 'A4'/'A5') */
 export function paperSizeFromParams(p: Record<string, string> | undefined): PaperSize {
-  return p?.paperSize === 'A5' ? 'A5' : 'A4'
+  return normalizePaperSize(p?.paperSize)
 }
 
 // ==================================================================
@@ -472,10 +510,10 @@ function Badge({ number }: { number: number }) {
 }
 
 // ==================================================================
-// حجم الورقة A4 / A5 — محدد + طباعة بحجم الصفحة الصحيح
+// حجم الورقة واتجاهها — 4 خيارات (A4/A5 × طولي/عرضي) — محدد + طباعة بحجم الصفحة الصحيح
 // ==================================================================
 
-/** محدد حجم الورقة — يظهر في شريط أدوات كل نموذج */
+/** محدد مقاس الورقة واتجاهها — 4 خيارات: A4 طولي/عرضي، A5 طولي/عرضي */
 export function PaperSizeSelector({
   value,
   onChange,
@@ -484,44 +522,66 @@ export function PaperSizeSelector({
   onChange: (s: PaperSize) => void
 }) {
   const opts: { key: PaperSize; label: string; Icon: typeof FileText }[] = [
-    { key: 'A4', label: 'ورقة A4', Icon: FileText },
-    { key: 'A5', label: 'ورقة A5', Icon: File },
+    { key: 'A4-portrait', label: 'ورقة A4 طولية', Icon: RectangleVertical },
+    { key: 'A4-landscape', label: 'ورقة A4 عرضية', Icon: RectangleHorizontal },
+    { key: 'A5-portrait', label: 'ورقة A5 طولية', Icon: File },
+    { key: 'A5-landscape', label: 'ورقة A5 عرضية', Icon: RectangleHorizontal },
   ]
   return (
     <div
       className="flex items-center gap-0.5 rounded-full border border-(--border) bg-muted/40 p-0.5"
       role="group"
-      aria-label="تحديد حجم الورقة"
+      aria-label="تحديد مقاس الورقة واتجاهها"
     >
-      {opts.map(({ key, label, Icon }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => onChange(key)}
-          title={label}
-          aria-pressed={value === key}
-          className={`inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-black transition-colors ${
-            value === key ? 'bg-(--club) text-white' : 'text-neutral-600 hover:text-(--club)'
-          }`}
-        >
-          <Icon className="h-3.5 w-3.5" />
-          {key}
-        </button>
+      {opts.map(({ key, label, Icon }, i) => (
+        <span key={key} className="flex items-center gap-0.5">
+          {i === 2 && <span className="mx-0.5 h-4 w-px bg-(--border)" aria-hidden />}
+          <button
+            type="button"
+            onClick={() => onChange(key)}
+            title={label}
+            aria-pressed={value === key}
+            className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-black transition-colors ${
+              value === key ? 'bg-(--club) text-white' : 'text-neutral-600 hover:text-(--club)'
+            }`}
+          >
+            {key === 'A5-portrait' ? <File className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+            {key === 'A4-portrait' && 'A4 طولي'}
+            {key === 'A4-landscape' && 'A4 عرضي'}
+            {key === 'A5-portrait' && 'A5 طولي'}
+            {key === 'A5-landscape' && 'A5 عرضي'}
+          </button>
+        </span>
       ))}
     </div>
   )
 }
 
 /**
- * حجم صفحة الطباعة — يُحقن داخل بوابة الطباعة ليخرج PDF/الورق بحجم A4 أو A5 فعلياً.
+ * مقاس واتجاه صفحة الطباعة — يُحقن داخل بوابة الطباعة ليخرج PDF/الورق بالورقة الفعلية:
+ * A4 طولي/عرضي أو A5 طولي/عرضي.
  */
 export function PrintPageSize({ size }: { size: PaperSize }) {
-  const css = size === 'A5' ? '@page { size: A5 portrait; margin: 9mm 7mm; }' : '@page { size: A4 portrait; margin: 10mm 9mm; }'
-  return <style>{css}</style>
+  const css: Record<PaperSize, string> = {
+    'A4-portrait': '@page { size: A4 portrait; margin: 10mm 9mm; }',
+    'A4-landscape': '@page { size: A4 landscape; margin: 10mm 12mm; }',
+    'A5-portrait': '@page { size: A5 portrait; margin: 9mm 7mm; }',
+    'A5-landscape': '@page { size: A5 landscape; margin: 9mm 10mm; }',
+  }
+  return <style>{css[size] ?? css['A4-portrait']}</style>
 }
 
-/** عرض الورقة في المعاينة بحسب الحجم */
+/** عرض الورقة في المعاينة بحسب المقاس والاتجاه
+ *  (A5 عرضي = 210mm = نفس عرض A4 طولي فعلياً؛ A4 عرضي = 297mm أي الأعرض) */
 export function paperWidthClass(size: PaperSize, wide = false): string {
-  if (size === 'A5') return wide ? 'max-w-[520px]' : 'max-w-[480px]'
-  return wide ? 'max-w-[730px]' : 'max-w-[680px]'
+  switch (size) {
+    case 'A5-portrait':
+      return wide ? 'max-w-[520px]' : 'max-w-[480px]'
+    case 'A4-landscape':
+      return wide ? 'max-w-[1010px]' : 'max-w-[960px]'
+    case 'A5-landscape':
+    case 'A4-portrait':
+    default:
+      return wide ? 'max-w-[730px]' : 'max-w-[680px]'
+  }
 }

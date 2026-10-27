@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * استمارة الانخراط الموحدة الرسمية — صفحة A4 عمودية واحدة لجميع الرياضات:
+ * استمارة الانخراط الموحدة الرسمية — صفحة واحدة لجميع الرياضات (A4 طولي/عرضي، A5 طولي/عرضي):
  *
  *   1) رأس الاستمارة: الترويسة الموحدة للنادي + عنوان الاستمارة + الموسم وأرقام الملف/الانخراط
  *   2) معلومات المنخرط: تُجلب تلقائياً من ملف المنخرط في قاعدة البيانات
@@ -297,7 +297,7 @@ function SectionBar({ n, title, aside }: { n?: number; title: string; aside?: st
 }
 
 // ==================================================================
-// الورقة — A4 عمودية واحدة
+// الورقة — 4 مقاسات: A4 طولي/عرضي، A5 طولي/عرضي
 // ==================================================================
 
 export function EnrollmentFormPaper({
@@ -305,7 +305,7 @@ export function EnrollmentFormPaper({
   settings,
   contact,
   printable = true,
-  paperSize = 'A4',
+  paperSize = 'A4-portrait',
 }: {
   data: EnrollmentFormData
   settings: EnrollmentFormSettings
@@ -338,7 +338,7 @@ export function EnrollmentFormPaper({
 
   return (
     <div
-      className={`doc-paper bg-white w-[680px] mx-auto relative ${paperSize === 'A5' ? 'max-w-[min(480px,100%)]' : 'max-w-full'} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper bg-white mx-auto relative ${paperSize === 'A4-landscape' ? 'w-[960px]' : 'w-[680px]'} ${paperSize === 'A5-portrait' ? 'max-w-[min(480px,100%)]' : ''} ${printable ? 'doc-print-area' : ''}`}
       dir="rtl"
       style={{ background: '#ffffff', color: '#1c2434' }}
     >
@@ -625,8 +625,8 @@ export function EnrollmentFormDialog({
   const siteSettings = useSiteSettings((s) => s.settings)
   const [data, setData] = useState<EnrollmentFormData | null>(initial)
   const [mode, setMode] = useState<'preview' | 'edit'>('preview')
-  // حجم ورقة الطباعة حسب اختيار المستخدم — A4 الافتراضي
-  const [paperSize, setPaperSize] = useState<PaperSize>('A4')
+  // مقاس واتجاه ورقة الطباعة حسب اختيار المستخدم — A4 طولي افتراضياً
+  const [paperSize, setPaperSize] = useState<PaperSize>('A4-portrait')
 
   // مزامنة البيانات عند فتح نافذة جديدة لمنخرط آخر (بلا null داخل الترتيب)
   const key = initial?.id ?? ''
@@ -659,7 +659,7 @@ export function EnrollmentFormDialog({
               استمارة الانخراط الرسمية — {data.fullName || 'منخرط جديد'}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              صفحة واحدة بمقاس A4 أو A5 حسب اختيارك — معاينة حية، ثم الطباعة أو الحفظ بصيغة PDF
+              مقاس الورقة حسب اختيارك — A4 أو A5 طولية أو عرضية — معاينة حية، ثم الطباعة أو الحفظ بصيغة PDF
               (اختر «حفظ كـ PDF» في نافذة الطباعة).
             </DialogDescription>
           </DialogHeader>
@@ -769,7 +769,7 @@ export function EnrollmentFormDialog({
         </DialogContent>
       </Dialog>
 
-      {/* بوابة الطباعة: نسخة الورقة خارج الحوار تُطبع وحدها — A4 أو A5 حسب الاختيار */}
+      {/* بوابة الطباعة: نسخة الورقة خارج الحوار تُطبع وحدها — بالمقاس والاتجاه المختارين */}
       {open && (
         <PrintPortal>
           <PrintPageSize size={paperSize} />

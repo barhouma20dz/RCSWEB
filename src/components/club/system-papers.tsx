@@ -61,6 +61,9 @@ import {
   makeBlock,
   makeDocText,
   paperWidthClass,
+  isA5,
+  normalizePaperSize,
+  DEFAULT_PAPER_SIZE,
   type DocBlock,
   type DocText,
   type PaperSize,
@@ -100,7 +103,7 @@ export interface AuthorizationData {
   childBirth: string // تاريخ ميلاد الابن(ة)
   sport: string // الرياضة الممارسة
   childGender: 'male' | 'female'
-  paperSize?: PaperSize // حجم الورقة A4 / A5
+  paperSize?: PaperSize // مقاس واتجاه الورقة — A4 طولي/عرضي، A5 طولي/عرضي
 }
 
 export const EMPTY_AUTHORIZATION: AuthorizationData = {
@@ -147,6 +150,7 @@ export function authFromParams(p: Record<string, string> | undefined): Authoriza
     childBirth: p?.childBirth ?? '',
     sport: p?.sport ?? '',
     childGender: p?.childGender === 'female' ? 'female' : 'male',
+    paperSize: normalizePaperSize(p?.paperSize),
   }
 }
 
@@ -183,7 +187,7 @@ export function ParentAuthorizationPaper({
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full ${paperWidthClass(d.paperSize ?? 'A4')} ${d.paperSize === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(d.paperSize ?? DEFAULT_PAPER_SIZE)} ${isA5(d.paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -303,7 +307,7 @@ export function ParentAuthorizationDialog({
   const set = (k: keyof AuthorizationData) => (v: string) =>
     setD((prev) => ({ ...prev, [k]: v }))
 
-  const paperSize: PaperSize = d.paperSize ?? 'A4'
+  const paperSize: PaperSize = d.paperSize ?? DEFAULT_PAPER_SIZE
 
   const saveArchive = async () => {
     setSaving(true)
@@ -491,7 +495,7 @@ export function TrainingRequestPaper({
   const blocks = blocksFromJson(data.bodyBlocks, data.body)
   return (
     <div
-      className={`doc-paper mx-auto w-full ${paperWidthClass(data.paperSize)} ${data.paperSize === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(data.paperSize)} ${isA5(data.paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -592,7 +596,7 @@ export function TrainingRequestDialog({
   const [subjectDoc, setSubjectDoc] = useState<DocText>(makeDocText('طلب حصة تدريبية في ملعب الإخوة براسي', { fontSize: 15, bold: true }))
   const [rows, setRows] = useState<SlotRow[]>(DEFAULT_ROWS)
   const [blocks, setBlocks] = useState<DocBlock[]>([makeBlock('')])
-  const [paperSize, setPaperSize] = useState<PaperSize>('A4')
+  const [paperSize, setPaperSize] = useState<PaperSize>('A4-portrait')
   const [saving, setSaving] = useState(false)
   const [seed, setSeed] = useState('')
 
@@ -605,7 +609,7 @@ export function TrainingRequestDialog({
     setSubjectDoc(makeDocText('طلب حصة تدريبية في ملعب الإخوة براسي', { fontSize: 15, bold: true }))
     setRows(DEFAULT_ROWS.map((r) => ({ ...r })))
     setBlocks([makeBlock(composeBody(DEFAULT_ROWS, 'رئيس المجلس الشعبي البلدي لبلدية سعيدة'))])
-    setPaperSize('A4')
+    setPaperSize('A4-portrait')
   }
   if (!open && seed) setSeed('')
 

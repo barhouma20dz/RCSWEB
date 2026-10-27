@@ -8,7 +8,7 @@
 import { useMemo } from 'react'
 import { Star } from 'lucide-react'
 import { formatDateDMY } from '@/lib/date-format'
-import { paperWidthClass, PrintPageSize, type PaperSize } from './doc-blocks'
+import { isA5, normalizePaperSize, paperWidthClass, PrintPageSize, type PaperSize } from './doc-blocks'
 import type { ClubDocumentItem } from './types'
 
 export interface DocumentDesign {
@@ -18,7 +18,7 @@ export interface DocumentDesign {
   showStamp: boolean
   showWatermark: boolean
   signatureName: string
-  /** حجم الورقة حسب الاختيار — A4 افتراضياً */
+  /** مقاس واتجاه الورقة حسب الاختيار — A4 طولي افتراضياً */
   paperSize?: PaperSize
 }
 
@@ -35,7 +35,9 @@ export function parseDesign(json: string): DocumentDesign {
   if (!json) return { ...DEFAULT_DESIGN }
   try {
     const d = JSON.parse(json) as Partial<DocumentDesign>
-    return { ...DEFAULT_DESIGN, ...d }
+    const merged = { ...DEFAULT_DESIGN, ...d }
+    // تطبيع المقاس المحفوظ — الأوراق القديمة 'A4'/'A5' تُحوّل تلقائياً إلى الطولي
+    return { ...merged, paperSize: normalizePaperSize(merged.paperSize) }
   } catch {
     return { ...DEFAULT_DESIGN }
   }
@@ -72,24 +74,24 @@ export function DocumentPaper({
     'refNumber' | 'title' | 'type' | 'category' | 'content' | 'design' | 'createdAt' | 'member' | 'branch'
   >
   compact?: boolean
-  /** حجم الورقة عند العرض/الطباعة — يتجاوز المحفوظ في تصميم الوثيقة */
+  /** مقاس واتجاه الورقة عند العرض/الطباعة — يتجاوز المحفوظ في تصميم الوثيقة */
   paperSize?: PaperSize
 }) {
   const design = useMemo(() => parseDesign(doc.design), [doc.design])
   const accent = ACCENT_HEX[design.accent] ?? ACCENT_HEX.navy
-  const size: PaperSize = paperSizeProp ?? design.paperSize ?? 'A4'
+  const size: PaperSize = normalizePaperSize(paperSizeProp ?? design.paperSize)
 
   return (
     <div
       className={`doc-paper doc-print-area mx-auto w-full ${
         compact
           ? 'max-w-[520px] p-5 sm:p-7'
-          : `${paperWidthClass(size)} ${size === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-10'}`
+          : `${paperWidthClass(size)} ${isA5(size) ? 'p-5 sm:p-7' : 'p-6 sm:p-10'}`
       }`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
-      {/* حجم صفحة الطباعة الفعلي — A4 أو A5 حسب الاختيار */}
+      {/* مقاس واتجاه صفحة الطباعة الفعلي — 4 خيارات */}
       {!compact && <PrintPageSize size={size} />}
       <div className="doc-paper-frame" />
 

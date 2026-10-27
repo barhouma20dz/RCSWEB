@@ -72,7 +72,7 @@ import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { DocumentPaper, parseDesign, type DocumentDesign } from '../document-paper'
 import { parseSystemDesign } from '../system-papers'
-import { PaperSizeSelector, PrintPageSize, type PaperSize } from '../doc-blocks'
+import { PaperSizeSelector, PrintPageSize, isA5, normalizePaperSize, type PaperSize } from '../doc-blocks'
 import { AdminPaperLibrarySection, SystemPaperView } from '../admin-papers'
 import type {
   AdminData,
@@ -112,7 +112,7 @@ const KIND_LABELS: Record<string, string> = {
 
 /** يقرأ حجم الورقة المحفوظ في تصميم وثيقة (A4 افتراضياً) */
 function docPaperSize(designJson: string | undefined): PaperSize {
-  return parseDesign(designJson ?? '').paperSize === 'A5' ? 'A5' : 'A4'
+  return normalizePaperSize(parseDesign(designJson ?? '').paperSize)
 }
 
 /** تسميات أنواع وثائق الأرشيف — محلية لتغطية النوع المُصدَر أيضاً */
@@ -423,7 +423,7 @@ function IssuedPaper({
   phone,
   address,
   issueDate,
-  paperSize = 'A4',
+  paperSize = 'A4-portrait',
 }: {
   template: { fileType: string; fileData?: string; category?: string }
   fields: TemplateField[]
@@ -442,10 +442,16 @@ function IssuedPaper({
   return (
     <div
       dir="rtl"
-      className={`doc-paper doc-print-area mx-auto w-full ${paperSize === 'A5' ? 'max-w-[560px]' : 'max-w-[760px]'} px-[4.5%] py-[3.5%]`}
+      className={`doc-paper doc-print-area mx-auto w-full ${
+        isA5(paperSize)
+          ? 'max-w-[560px]'
+          : paperSize === 'A4-landscape'
+            ? 'max-w-[1010px]'
+            : 'max-w-[760px]'
+      } px-[4.5%] py-[3.5%]`}
       style={{ ['--doc-accent' as string]: '#9a7a25', containerType: 'inline-size' }}
     >
-      {/* حجم صفحة الطباعة الفعلي — A4 أو A5 */}
+      {/* مقاس واتجاه صفحة الطباعة الفعلي — 4 خيارات */}
       <PrintPageSize size={paperSize} />
       <div className="doc-paper-frame" />
 
@@ -636,7 +642,7 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
   })
   const [issueSaving, setIssueSaving] = useState(false)
   // حجم ورقة الإصدار حسب الاختيار — A4 أو A5
-  const [issueSize, setIssueSize] = useState<PaperSize>('A4')
+  const [issueSize, setIssueSize] = useState<PaperSize>('A4-portrait')
 
   // ====== حالة تبويب الأرشيف (كما كانت + الوثائق المُصدرة) ======
   const [query, setQuery] = useState('')
@@ -647,7 +653,7 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
   const [saving, setSaving] = useState(false)
   const [viewDoc, setViewDoc] = useState<ClubDocumentItem | null>(null)
   // حجم ورقة العرض/الطباعة في نافذة الأرشيف — يتذكّر اختيار الوثيقة
-  const [viewSize, setViewSize] = useState<PaperSize>('A4')
+  const [viewSize, setViewSize] = useState<PaperSize>('A4-portrait')
   const [formTab, setFormTab] = useState<'data' | 'design'>('data')
   const [form, setForm] = useState({ ...DEFAULT_FORM })
   const [design, setDesign] = useState<DocumentDesign>({ ...DEFAULT_DESIGN })
@@ -2290,9 +2296,9 @@ export function RecordsManager({ data, reload }: { data: AdminData; reload: () =
                   />
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <Label>حجم الورقة (A4 / A5)</Label>
+                  <Label>مقاس الورقة واتجاهها (A4/A5 — طولي/عرضي)</Label>
                   <PaperSizeSelector
-                    value={design.paperSize ?? 'A4'}
+                    value={normalizePaperSize(design.paperSize)}
                     onChange={(s) => setDesign({ ...design, paperSize: s })}
                   />
                 </div>

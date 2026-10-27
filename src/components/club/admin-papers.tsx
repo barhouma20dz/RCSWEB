@@ -86,6 +86,7 @@ import {
   makeDocText,
   paperSizeFromParams,
   paperWidthClass,
+  isA5,
   type DocBlock,
   type DocText,
   type PaperSize,
@@ -112,7 +113,7 @@ function PaperShell({
   printable = true,
   wide = false,
   flow = false,
-  paperSize = 'A4',
+  paperSize = 'A4-portrait',
 }: {
   children: React.ReactNode
   printable?: boolean
@@ -125,7 +126,7 @@ function PaperShell({
   const accent = useAccentColor()
   return (
     <div
-      className={`doc-paper mx-auto w-full ${paperWidthClass(paperSize, wide)} ${paperSize === 'A5' ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
+      className={`doc-paper mx-auto w-full ${paperWidthClass(paperSize, wide)} ${isA5(paperSize) ? 'p-5 sm:p-7' : 'p-6 sm:p-9'} ${flow ? 'doc-paper-flow' : ''} ${printable ? 'doc-print-area' : ''}`}
       style={{ ['--doc-accent' as string]: accent }}
       dir="rtl"
     >
@@ -328,7 +329,7 @@ export const EMPTY_TIME_SCHEDULE: TimeScheduleData = {
   rightRole: 'رئيس الرابطة',
   leftSign: '',
   titleStyle: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 export function timeScheduleFromParams(p: Record<string, string> | undefined): TimeScheduleData {
@@ -637,7 +638,7 @@ export const EMPTY_WORK_CONTRACT: WorkContractData = {
   signRole1: '',
   signName2: '',
   titleStyle: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 /** عنوان العقد الافتراضي */
@@ -1214,7 +1215,7 @@ export const EMPTY_WORK_RESUMPTION: WorkResumptionData = {
   backAt: '',
   placeDate: '',
   openingStyle: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 /** السطر الافتتاحي الافتراضي */
@@ -1435,7 +1436,7 @@ export const EMPTY_TRANSPORT: TransportRequestData = {
   schedule: '',
   body: '',
   bodyBlocks: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 export function transportFromParams(p: Record<string, string> | undefined): TransportRequestData {
@@ -1639,7 +1640,7 @@ export const EMPTY_BORDEREAU: BordereauData = {
   recipient: '',
   rows: [{ doc: '', count: '', note: '' }],
   titleStyle: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 /** عنوان جدول الإرسال الافتراضي */
@@ -1870,7 +1871,7 @@ export const EMPTY_ACTIVITY_CERT: ActivityCertificateData = {
   placeDate: '',
   signer: '',
   titleStyle: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 /** عنوان الشهادة الافتراضي */
@@ -2074,7 +2075,7 @@ export const EMPTY_SUBSIDY: SubsidyRequestData = {
   subjectStyle: '',
   body: '',
   bodyBlocks: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 export function subsidyFromParams(p: Record<string, string> | undefined): SubsidyRequestData {
@@ -2258,7 +2259,7 @@ export const EMPTY_RECEIPT: ReceiptData = {
   reason: 'أجر شهر',
   dateText: '',
   titleStyle: '',
-  paperSize: 'A4',
+  paperSize: 'A4-portrait',
 }
 
 /** عنوان الوصل الافتراضي */

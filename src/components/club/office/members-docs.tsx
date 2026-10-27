@@ -63,12 +63,12 @@ import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/session'
 import { formatDateDMY } from '@/lib/date-format'
 import { DocumentPaper, DOC_TYPE_LABELS, parseDesign } from '../document-paper'
-import { PaperSizeSelector, type PaperSize } from '../doc-blocks'
+import { PaperSizeSelector, normalizePaperSize, type PaperSize } from '../doc-blocks'
 import type { BranchMemberItem, ClubDocumentItem, OfficeData } from '../types'
 
-/** يقرأ حجم الورقة المحفوظ في تصميم وثيقة (A4 افتراضياً) */
+/** يقرأ مقاس واتجاه الورقة المحفوظ في تصميم وثيقة (A4 طولي افتراضياً) */
 function docPaperSize(designJson: string | undefined): PaperSize {
-  return parseDesign(designJson ?? '').paperSize === 'A5' ? 'A5' : 'A4'
+  return normalizePaperSize(parseDesign(designJson ?? '').paperSize)
 }
 
 /** المناصب الهرمية الرسمية — نفس ترتيب الإدارة العامة */
@@ -484,7 +484,7 @@ const DOC_ICONS: Record<ClubDocumentItem['type'], React.ComponentType<{ classNam
 export function BranchDocumentsManager({ data }: { data: OfficeData }) {
   const [viewDoc, setViewDoc] = useState<ClubDocumentItem | null>(null)
   // حجم ورقة العرض/الطباعة — يتذكّر اختيار الوثيقة (A4 افتراضياً)
-  const [viewSize, setViewSize] = useState<PaperSize>('A4')
+  const [viewSize, setViewSize] = useState<PaperSize>('A4-portrait')
   const [typeFilter, setTypeFilter] = useState('all')
   const documents = data.documents ?? []
 
