@@ -461,18 +461,16 @@ export function EnrollmentFormPaper({
           <SectionBar n={2} title="الشهادة الطبية" aside="تُملأ من طرف الطبيب المعالج" />
           <div className="border border-neutral-300 px-2 py-1.5">
             <div className="text-[10.5px] font-bold text-neutral-800 leading-[1.9]">
+              <div>يشهد الطبيب الممضي أسفله، الدكتور</div>
+              <div className="border-b border-dotted border-neutral-400 min-h-[16px]" />
               <div className="flex items-end gap-1">
-                <span className="shrink-0">أنا الموقع أسفله الدكتور:</span>
-                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
-              </div>
-              <div className="flex items-end gap-1">
-                <span className="shrink-0">يشهد بأن السيد(ة):</span>
+                <span className="shrink-0">بأن السيد(ة):</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {data.fullName}
                 </span>
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">المولود (ة) بتاريخ ومكان:</span>
+                <span className="shrink-0">المولود(ة) بتاريخ ومكان:</span>
                 <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {[
                     formatDateDMY(data.birthDate),
@@ -483,13 +481,18 @@ export function EnrollmentFormPaper({
                 </span>
               </div>
               <div className="flex items-end gap-1">
-                <span className="shrink-0">بأن لا وجود لأي خطر لممارسة رياضة:</span>
-                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
-              </div>
-              <div className="flex items-end gap-1">
-                <span className="shrink-0">وتذكر الرياضة المحددة:</span>
-                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
+                <span>
+                  بعد الفحص الطبي، لا يعاني(تعاني) من أي مانع صحي يمنع من ممارسة رياضة
+                </span>
+                <span className="flex-1 min-w-[70px] border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
                   {data.branchName}
+                </span>
+              </div>
+              <div className="flex items-end gap-1 mt-0.5">
+                <span className="w-[14%] shrink-0" />
+                <span className="shrink-0">حرر بسعيدة:</span>
+                <span className="inline-block w-[120px] border-b border-dotted border-neutral-400 text-center font-black text-neutral-900">
+                  {formatDateDMY(data.createdAt)}
                 </span>
               </div>
             </div>
@@ -498,17 +501,7 @@ export function EnrollmentFormPaper({
                 ({medicalHint.trim()})
               </p>
             )}
-            <div className="flex items-end gap-3 mt-2">
-              <div className="flex-1 text-[9.5px] font-bold text-neutral-700 space-y-[8px]">
-                <div>
-                  اسم الطبيب وصفته:{' '}
-                  <span className="inline-block w-[52%] border-b border-dotted border-neutral-400" />
-                </div>
-                <div>
-                  تاريخ الفحص:{' '}
-                  <span className="inline-block w-[52%] border-b border-dotted border-neutral-400" />
-                </div>
-              </div>
+            <div className="flex justify-end mt-2">
               <div className="w-[92px] h-[52px] border border-dashed border-neutral-400 rounded-sm flex items-center justify-center text-[8px] font-bold text-neutral-400 text-center leading-tight shrink-0">
                 إمضاء
                 <br />
