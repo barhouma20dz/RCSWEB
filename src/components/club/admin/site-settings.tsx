@@ -690,13 +690,13 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
             {/* ===== الاستمارة المطبوعة A4 — تُدار من حساب الإدارة ===== */}
             <div>
               <Label className="text-base font-black text-(--club-dark) flex items-center gap-1.5">
-                <FileText className="h-4 w-4" /> الاستمارة المطبوعة A4 — استمارة الانخراط الرسمية
+                <FileText className="h-4 w-4" /> الاستمارة المطبوعة A4/A5 — استمارة الانخراط الرسمية
               </Label>
               <p className="text-xs text-muted-foreground mt-1 mb-3 leading-relaxed">
-                استمارة موحدة لجميع الرياضات تُطبع صفحة A4 واحدة بعد تسجيل أي منخرط (ولأي منخرط
-                قديم من صفحة الطلبات): معلومات المنخرط تلقائياً من ملفه، الشهادة الطبية يملؤها
-                الطبيب، التصريح الأبوي للقاصرين، ورسوم الاشتراك والتأمين للفروع المعنية فقط، مع
-                القوانين الأساسية ومعلومات النادي.
+                استمارة موحدة لجميع الرياضات تُطبع A4 أو A5 بعد تسجيل أي منخرط (ولأي منخرط
+                قديم من صفحة الطلبات): معلومات المنخرط تلقائياً من ملفه، الشهادة الطبية بالنموذج
+                الرسمي المعتمد يملؤه الطبيب ويوقّع ويختم، التصريح الأبوي للقاصرين مع ختم مصالح
+                البلدية، ورسوم الاشتراك نوعان حسب الفئة العمرية، مع القوانين الأساسية ومعلومات النادي.
               </p>
 
               {/* الحقول الظاهرة على الاستمارة */}
@@ -727,80 +727,87 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
                 ))}
               </div>
 
-              {/* رسوم الاشتراك والتأمين لكل فرع */}
+              {/* رسوم الاشتراك — نوعان حسب الفئة العمرية */}
               <div className="mt-5 rounded-2xl border border-(--border) overflow-hidden">
                 <div className="bg-(--club-light) px-4 py-2.5 flex items-center gap-2">
                   <Banknote className="h-4 w-4 text-(--club)" />
-                  <span className="font-black text-sm text-(--club-dark)">رسوم الاشتراك والتأمين — لكل فرع</span>
+                  <span className="font-black text-sm text-(--club-dark)">رسوم الاشتراك — نوعان حسب الفئة العمرية</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground px-4 py-2 leading-relaxed border-b border-(--border)">
-                  فعّل الرسوم للفروع المعنية فقط (مثل السباحة) وحدّد المبالغ بالدينار. الفروع غير
-                  المفعّلة لا يظهر قسم الرسوم في استمارتها إطلاقاً.
+                  تُطبّق الرسوم على جميع الرياضات، ويُحدّد مبلغ المنخرط(ة) آلياً في الاستمارة حسب
+                  سنه عند تاريخ التسجيل: أقل من 14 سنة / 14 سنة فما فوق. عدّل المبلغين بالدينار.
                 </p>
-                <div className="divide-y divide-(--border) max-h-72 overflow-y-auto nice-scroll">
-                  {data.branches.map((b) => {
-                    const f = mergeFormSettings(draft.enrollment?.form).fees[b.slug] ?? {
-                      enabled: false,
-                      subscription: 0,
-                      insurance: 0,
-                    }
-                    const setFee = (patch: Partial<typeof f>) =>
-                      setDraft({
-                        ...draft,
-                        enrollment: {
-                          ...draft.enrollment,
-                          form: {
-                            ...mergeFormSettings(draft.enrollment?.form),
-                            fees: {
-                              ...mergeFormSettings(draft.enrollment?.form).fees,
-                              [b.slug]: { ...f, ...patch },
+                <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
+                  <label className="flex items-center gap-2 text-xs font-bold text-(--club-dark) cursor-pointer">
+                    <Switch
+                      checked={mergeFormSettings(draft.enrollment?.form).feeTiers.enabled}
+                      onCheckedChange={(v) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: {
+                              ...mergeFormSettings(draft.enrollment?.form),
+                              feeTiers: { ...mergeFormSettings(draft.enrollment?.form).feeTiers, enabled: v },
                             },
                           },
-                        },
-                      })
-                    return (
-                      <div key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: b.color }}
-                          aria-hidden
-                        />
-                        <span className="font-bold text-sm text-(--club-dark) min-w-28 flex-1">{b.name}</span>
-                        <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground cursor-pointer">
-                          <Switch checked={f.enabled} onCheckedChange={(v) => setFee({ enabled: v })} />
-                          معني بالرسوم
-                        </label>
-                        {f.enabled && (
-                          <>
-                            <label className="flex items-center gap-1 text-xs font-bold">
-                              الاشتراك
-                              <Input
-                                type="number"
-                                min={0}
-                                dir="ltr"
-                                className="w-24 h-8 text-right"
-                                value={f.subscription || 0}
-                                onChange={(e) => setFee({ subscription: Math.max(0, Number(e.target.value) || 0) })}
-                              />
-                              دج
-                            </label>
-                            <label className="flex items-center gap-1 text-xs font-bold">
-                              التأمين
-                              <Input
-                                type="number"
-                                min={0}
-                                dir="ltr"
-                                className="w-24 h-8 text-right"
-                                value={f.insurance || 0}
-                                onChange={(e) => setFee({ insurance: Math.max(0, Number(e.target.value) || 0) })}
-                              />
-                              دج
-                            </label>
-                          </>
-                        )}
-                      </div>
-                    )
-                  })}
+                        })
+                      }
+                    />
+                    إظهار قسم الرسوم في الاستمارة
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold">
+                    أقل من 14 سنة
+                    <Input
+                      type="number"
+                      min={0}
+                      dir="ltr"
+                      className="w-24 h-8 text-right"
+                      value={mergeFormSettings(draft.enrollment?.form).feeTiers.under14}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: {
+                              ...mergeFormSettings(draft.enrollment?.form),
+                              feeTiers: {
+                                ...mergeFormSettings(draft.enrollment?.form).feeTiers,
+                                under14: Math.max(0, Number(e.target.value) || 0),
+                              },
+                            },
+                          },
+                        })
+                      }
+                    />
+                    دج
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold">
+                    14 سنة فما فوق
+                    <Input
+                      type="number"
+                      min={0}
+                      dir="ltr"
+                      className="w-24 h-8 text-right"
+                      value={mergeFormSettings(draft.enrollment?.form).feeTiers.above14}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          enrollment: {
+                            ...draft.enrollment,
+                            form: {
+                              ...mergeFormSettings(draft.enrollment?.form),
+                              feeTiers: {
+                                ...mergeFormSettings(draft.enrollment?.form).feeTiers,
+                                above14: Math.max(0, Number(e.target.value) || 0),
+                              },
+                            },
+                          },
+                        })
+                      }
+                    />
+                    دج
+                  </label>
                 </div>
                 <div className="px-4 py-2.5 border-t border-(--border) bg-neutral-50">
                   <div className="space-y-1.5">
@@ -847,10 +854,12 @@ export function SiteSettingsManager({ data, reload }: { data: AdminData; reload:
               {/* الصيغة الطبية */}
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="font-bold text-sm text-(--club-dark)">الصيغة الطبية الافتراضية (إرشادية — اختياري)</Label>
+                  <Label className="font-bold text-sm text-(--club-dark)">إرشاد إضافي داخل الشهادة الطبية (اختياري)</Label>
                   <p className="text-[11px] text-muted-foreground">
-                    نص خافت يُطبع داخل مربع الشهادة الطبية كإرشاد للطبيب. لا يُطبّق أي تصريح
-                    «سليم طبياً» تلقائياً — الطبيب هو من يملأ ويوقّع ويختم.
+                    الشهادة الطبية تُطبع بالنموذج الرسمي المعتمد: «أنا الموقع أسفله الدكتور… يشهد
+                    بأن السيد(ة)… المولود(ة) بتاريخ ومكان… بأن لا وجود لأي خطر لممارسة رياضة
+                    الرياضة المحددة» — مع اسم الطبيب وتاريخ الفحص والإمضاء والختم. يمكنك إضافة
+                    نص إرشادي خافت يُطبع أسفل النموذج. لا يُطبّق أي تصريح «سليم طبياً» تلقائياً.
                   </p>
                   <Textarea
                     rows={3}

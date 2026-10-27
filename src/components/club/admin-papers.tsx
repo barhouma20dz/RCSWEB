@@ -2190,6 +2190,7 @@ export function SubsidyRequestDialog({
             <div className="flex flex-wrap gap-2">
               {onOpenLetterhead && <LetterheadQuickSettings onOpen={onOpenLetterhead} />}
               {onOpenSignatures && <SignaturesQuickSettings onOpen={onOpenSignatures} />}
+              <PaperSizeSelector value={d.paperSize} onChange={(s) => set('paperSize')(s)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

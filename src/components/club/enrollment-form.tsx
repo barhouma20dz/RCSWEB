@@ -5,9 +5,10 @@
  *
  *   1) رأس الاستمارة: الترويسة الموحدة للنادي + عنوان الاستمارة + الموسم وأرقام الملف/الانخراط
  *   2) معلومات المنخرط: تُجلب تلقائياً من ملف المنخرط في قاعدة البيانات
- *   3) الشهادة الطبية: مساحة يملؤها الطبيب ويوقّع ويختم (لا تصريح «سليم» تلقائي)
+ *   3) الشهادة الطبية: النموذج الرسمي المعتمد — يملؤه الطبيب ويوقّع ويختم (لا تصريح «سليم» تلقائي)
  *   4) التصريح الأبوي: للأقل من سن الرشد فقط — نصه قابل للتعديل من لوحة الإدارة
- *   5) رسوم الاشتراك والتأمين: تظهر للفروع المعنية فقط (مثل السباحة) حسب إعدادات الإدارة
+ *   5) رسوم الاشتراك: نوعان حسب الفئة العمرية — أقل من 14 سنة / 14 سنة فما فوق
+ *      (يُحدد مبلغ المنخرط آلياً حسب سنه عند تاريخ التسجيل)
  *   6) القوانين الأساسية للنادي: نقاط مختصرة قابلة للتعديل من لوحة الإدارة
  *   7) معلومات النادي ووسائل الاتصال: تذييل من إعدادات الموقع المعتمدة (لا بيانات مختلقة)
  *
@@ -44,7 +45,12 @@ import { PrintPortal } from './system-papers'
 import { PrintPageSize, PaperSizeSelector, type PaperSize } from './doc-blocks'
 import { useSiteSettings } from './site-store'
 import { formatDateDMY } from '@/lib/date-format'
-import type { EnrollmentFormFee, EnrollmentFormSettings, SiteSettings } from './types'
+import type {
+  EnrollmentFormFee,
+  EnrollmentFormSettings,
+  EnrollmentFeeTiers,
+  SiteSettings,
+} from './types'
 
 // ==================================================================
 // الإعدادات الافتراضية (يعدّلها مدير النادي من حساب الإدارة — وتُبذر افتراضياً)
@@ -65,10 +71,10 @@ export const DEFAULT_FORM_SETTINGS: EnrollmentFormSettings = {
     'أنا الممضي أسفله، ولي أمر الطفل(ة) المذكور(ة) في هذه الاستمارة، أصرح بموافقتي على انضمامه(ا) إلى النادي الرياضي الهاوي المتعدد الرياضات الرائد لبلدية سعيدة، وممارسة الرياضة المحددة في الاستمارة، مع الالتزام بالقوانين والتنظيمات المعمول بها لدى النادي.',
   medicalDefault: '',
   medicalByBranch: {},
-  // الرسوم للفروع المعنية فقط (مفتاح = slug الفرع) — تُعدَّل المبالغ من حساب الإدارة
-  fees: {
-    swimming: { enabled: true, subscription: 1000, insurance: 500 },
-  },
+  // (قديم — للتوافق فقط، لم يعد يُطبع)
+  fees: {},
+  // رسوم الاشتراك الرسمية — نوعان حسب الفئة العمرية (تُعدَّل المبالغ من حساب الإدارة)
+  feeTiers: { enabled: true, under14: 1300, above14: 1500 },
   bankInfo: '',
   showBirthPlace: true,
   showSpecialty: true,
@@ -78,7 +84,24 @@ export const DEFAULT_FORM_SETTINGS: EnrollmentFormSettings = {
 
 /** العبارة المالية الثابتة المطلوبة رسمياً في قسم الرسوم */
 export const FEES_NOTICE =
-  'يتم تسديد حقوق الاشتراك والتأمين عن طريق البنك وفق الإجراءات المعتمدة لدى النادي. ولا يُعد التسجيل الإلكتروني إثباتًا للدفع.'
+  'يتم تسديد حقوق الاشتراك عن طريق البنك وفق الإجراءات المعتمدة لدى النادي. ولا يُعد التسجيل الإلكتروني إثباتًا للدفع.'
+
+/** تسميات الفئتين العمريتين للرسوم */
+export const TIER_UNDER14_LABEL = 'أقل من 14 سنة'
+export const TIER_ABOVE14_LABEL = '14 سنة فما فوق'
+
+/** حساب سن المنخرط عند تاريخ معين (null إذا التاريخ غير صالح) */
+export function ageAt(birthDate: string, atIso: string): number | null {
+  if (!birthDate?.trim()) return null
+  const b = new Date(birthDate)
+  if (isNaN(b.getTime())) return null
+  const a = new Date(atIso)
+  if (isNaN(a.getTime())) return null
+  let age = a.getFullYear() - b.getFullYear()
+  const m = a.getMonth() - b.getMonth()
+  if (m < 0 || (m === 0 && a.getDate() < b.getDate())) age--
+  return age >= 0 && age < 130 ? age : null
+}
 
 /** دمج آمن لإعدادات الاستمارة مع الافتراضي (يتحمل بيانات قديمة أو ناقصة) */
 export function mergeFormSettings(raw: unknown): EnrollmentFormSettings {
@@ -94,7 +117,21 @@ export function mergeFormSettings(raw: unknown): EnrollmentFormSettings {
       }
     }
   }
+  // رسوم الاشتراك — نوعان حسب الفئة العمرية (قيم افتراضية رسمية عند الغياب)
+  const t = (s.feeTiers ?? {}) as Partial<EnrollmentFeeTiers>
+  const feeTiers: EnrollmentFeeTiers = {
+    enabled: t.enabled !== false,
+    under14:
+      typeof t.under14 === 'number' && t.under14 >= 0
+        ? t.under14
+        : DEFAULT_FORM_SETTINGS.feeTiers.under14,
+    above14:
+      typeof t.above14 === 'number' && t.above14 >= 0
+        ? t.above14
+        : DEFAULT_FORM_SETTINGS.feeTiers.above14,
+  }
   return {
+    feeTiers,
     rules: Array.isArray(s.rules) ? s.rules.filter((r) => typeof r === 'string' && r.trim()) : [...DEFAULT_FORM_SETTINGS.rules],
     parentalText: typeof s.parentalText === 'string' ? s.parentalText : DEFAULT_FORM_SETTINGS.parentalText,
     medicalDefault: typeof s.medicalDefault === 'string' ? s.medicalDefault : '',
@@ -280,11 +317,13 @@ export function EnrollmentFormPaper({
 }) {
   const [ls] = useLetterheadSettings()
   const isMinor = !!data.parentName.trim()
-  const fee: EnrollmentFormFee | undefined = data.branchSlug
-    ? settings.fees[data.branchSlug]
-    : undefined
-  const feeOn = !!fee?.enabled
-  const feeTotal = fee ? (fee.subscription || 0) + (fee.insurance || 0) : 0
+  // رسوم الاشتراك — نوعان حسب الفئة العمرية (يُحدد مبلغ المنخرط آلياً حسب سنه)
+  const tiers = settings.feeTiers
+  const feeOn = tiers.enabled
+  const age = ageAt(data.birthDate, data.createdAt)
+  const isUnder14 = age !== null && age < 14
+  const myFee = age !== null ? (isUnder14 ? tiers.under14 : tiers.above14) : null
+  const myTierLabel = isUnder14 ? TIER_UNDER14_LABEL : TIER_ABOVE14_LABEL
   const medicalHint = (data.branchSlug && settings.medicalByBranch[data.branchSlug]) || settings.medicalDefault
   const genderLabel = data.gender === 'female' ? 'أنثى' : data.gender === 'male' ? 'ذكر' : ''
 
@@ -357,28 +396,44 @@ export function EnrollmentFormPaper({
           </div>
         </div>
 
-        {/* ===== 2) الشهادة الطبية — يملؤها الطبيب ويوقّع ويختم ===== */}
+        {/* ===== 2) الشهادة الطبية — النموذج الرسمي المعتمد (يملؤه الطبيب ويوقّع ويختم) ===== */}
         <div className="mt-2">
           <SectionBar n={2} title="الشهادة الطبية" aside="تُملأ من طرف الطبيب المعالج" />
           <div className="border border-neutral-300 px-2 py-1.5">
-            <div className="flex flex-wrap gap-x-4 text-[10px] font-bold text-neutral-800">
-              <span>
-                فحصت(ُ) المنخرط(ة): <span className="font-black">{data.fullName || '........................'}</span>
-              </span>
-              <span>
-                بشأن ممارسة رياضة: <span className="font-black">{data.branchName || '........................'}</span>
-              </span>
+            <div className="text-[10.5px] font-bold text-neutral-800 leading-[1.9]">
+              <div className="flex items-end gap-1">
+                <span className="shrink-0">أنا الموقع أسفله الدكتور:</span>
+                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px]" />
+              </div>
+              <div className="flex items-end gap-1">
+                <span className="shrink-0">يشهد بأن السيد(ة):</span>
+                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
+                  {data.fullName}
+                </span>
+              </div>
+              <div className="flex items-end gap-1">
+                <span className="shrink-0">المولود(ة) بتاريخ ومكان:</span>
+                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
+                  {[
+                    formatDateDMY(data.birthDate),
+                    data.birthPlace?.trim(),
+                  ]
+                    .filter(Boolean)
+                    .join(' — ')}
+                </span>
+              </div>
+              <div className="flex items-end gap-1">
+                <span className="shrink-0">بأن لا وجود لأي خطر لممارسة رياضة:</span>
+                <span className="flex-1 border-b border-dotted border-neutral-400 min-h-[16px] text-center font-black text-neutral-900">
+                  {data.branchName}
+                </span>
+              </div>
             </div>
             {medicalHint.trim() && (
               <p className="text-[9px] font-bold text-neutral-500 mt-1 leading-snug">
                 ({medicalHint.trim()})
               </p>
             )}
-            <div className="mt-1 space-y-[7px] pt-[2px]">
-              <div className="border-b border-dotted border-neutral-400" />
-              <div className="border-b border-dotted border-neutral-400" />
-              <div className="border-b border-dotted border-neutral-400" />
-            </div>
             <div className="flex items-end gap-3 mt-2">
               <div className="flex-1 text-[9.5px] font-bold text-neutral-700 space-y-[8px]">
                 <div>
@@ -443,28 +498,60 @@ export function EnrollmentFormPaper({
           </div>
         )}
 
-        {/* ===== 4) رسوم الاشتراك والتأمين — للفروع المعنية فقط ===== */}
-        {feeOn && fee && (
+        {/* ===== 4) رسوم الاشتراك — نوعان حسب الفئة العمرية ===== */}
+        {feeOn && (
           <div className="mt-2">
-            <SectionBar n={isMinor ? 4 : 3} title="رسوم الاشتراك والتأمين" />
+            <SectionBar
+              n={isMinor ? 4 : 3}
+              title="رسوم الاشتراك"
+              aside="حسب الفئة العمرية"
+            />
             <div className="border border-neutral-300 px-2 py-1.5">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="border border-neutral-200 rounded-sm py-1">
-                  <div className="text-[8.5px] font-bold text-neutral-500">الاشتراك الرياضي</div>
-                  <div className="text-[11px] font-black text-neutral-900">{fmtDz(fee.subscription || 0)}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div
+                  className={`border rounded-sm py-1 text-center ${isUnder14 ? 'bg-neutral-50' : ''}`}
+                  style={isUnder14 ? { borderColor: ls.accentColor, borderWidth: 1.5 } : { borderColor: 'rgb(229 229 229)' }}
+                >
+                  <div className="text-[8.5px] font-bold text-neutral-500">{TIER_UNDER14_LABEL}</div>
+                  <div className="text-[12px] font-black text-neutral-900">{fmtDz(tiers.under14 || 0)}</div>
+                  {isUnder14 && (
+                    <div className="text-[7.5px] font-black" style={{ color: ls.accentColor }}>
+                        فئة المنخرط(ة)
+                    </div>
+                  )}
                 </div>
-                <div className="border border-neutral-200 rounded-sm py-1">
-                  <div className="text-[8.5px] font-bold text-neutral-500">مصاريف التأمين</div>
-                  <div className="text-[11px] font-black text-neutral-900">{fmtDz(fee.insurance || 0)}</div>
-                </div>
-                <div className="border rounded-sm py-1" style={{ borderColor: ls.accentColor }}>
-                  <div className="text-[8.5px] font-bold text-neutral-500">المبلغ الإجمالي المستحق</div>
-                  <div className="text-[11px] font-black" style={{ color: ls.accentColor }}>
-                    {fmtDz(feeTotal)}
-                  </div>
+                <div
+                  className={`border rounded-sm py-1 text-center ${age !== null && !isUnder14 ? 'bg-neutral-50' : ''}`}
+                  style={
+                    age !== null && !isUnder14
+                      ? { borderColor: ls.accentColor, borderWidth: 1.5 }
+                      : { borderColor: 'rgb(229 229 229)' }
+                  }
+                >
+                  <div className="text-[8.5px] font-bold text-neutral-500">{TIER_ABOVE14_LABEL}</div>
+                  <div className="text-[12px] font-black text-neutral-900">{fmtDz(tiers.above14 || 0)}</div>
+                  {age !== null && !isUnder14 && (
+                    <div className="text-[7.5px] font-black" style={{ color: ls.accentColor }}>
+                      فئة المنخرط(ة)
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="text-[9.5px] font-bold text-neutral-700 mt-1.5">
+                {myFee !== null ? (
+                  <>
+                    المبلغ المستحق عن المنخرط(ة):{' '}
+                    <span className="font-black" style={{ color: ls.accentColor }}>
+                      {fmtDz(myFee)}
+                    </span>{' '}
+                    — الفئة: <span className="font-black">{myTierLabel}</span>
+                    {age !== null && <span className="text-[9px] text-neutral-500"> (السن: {age} سنة)</span>}
+                  </>
+                ) : (
+                  <>يُحدد المبلغ المستحق حسب سن المنخرط(ة) بتاريخ التسجيل.</>
+                )}
+              </div>
+              <div className="text-[9.5px] font-bold text-neutral-700 mt-0.5">
                 الموسم الرياضي المعني: <span className="font-black">{data.season}</span>
               </div>
               {settings.bankInfo.trim() && (

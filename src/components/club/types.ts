@@ -235,19 +235,30 @@ export interface SectionTexts {
 
 // ============ إعدادات استمارة الانخراط المطبوعة (A4 — تُدار من حساب الإدارة) ============
 
-/** رسوم فرع رياضي واحد (لن تظهر إلا للفروع المعنية مثل السباحة) */
+/**
+ * رسوم الاشتراك — نوعان حسب الفئة العمرية (يُحدد المبلغ آلياً حسب سن المنخرط):
+ * أقل من 14 سنة / 14 سنة فما فوق. (نموذج قديم لكل فرع — محفوظ للتوافق فقط)
+ */
 export interface EnrollmentFormFee {
-  enabled: boolean // هل الفرع معني برسوم الاشتراك والتأمين؟
+  enabled: boolean // هل الفرع معني برسوم الاشتراك؟
   subscription: number // مبلغ الاشتراك الرياضي (دج)
   insurance: number // مصاريف التأمين (دج)
+}
+
+/** رسوم الاشتراك الرسمية — نوعان حسب الفئة العمرية للمنخرط */
+export interface EnrollmentFeeTiers {
+  enabled: boolean // إظهار قسم الرسوم في الاستمارة المطبوعة
+  under14: number // الرسوم لأقل من 14 سنة (دج)
+  above14: number // الرسوم لسن 14 فما فوق (دج)
 }
 
 export interface EnrollmentFormSettings {
   rules: string[] // القوانين الأساسية للنادي (نقاط مختصرة)
   parentalText: string // نص التصريح الأبوي (يُعرض للقصر فقط)
-  medicalDefault: string // صيغة التصريح الطبي الافتراضية (إرشادية — يملأها الطبيب)
-  medicalByBranch: Record<string, string> // صيغة خاصة بكل فرع (حسب متطلبات الرياضة)
-  fees: Record<string, EnrollmentFormFee> // رسوم الاشتراك والتأمين لكل فرع
+  medicalDefault: string // إرشاد إضافي يُطبع داخل مربع الشهادة الطبية (اختياري)
+  medicalByBranch: Record<string, string> // إرشاد خاص بكل فرع (اختياري)
+  fees: Record<string, EnrollmentFormFee> // (قديم — للتوافق فقط، لم يعد يُطبع)
+  feeTiers: EnrollmentFeeTiers // رسوم الاشتراك — نوعان: أقل من 14 سنة / 14 سنة فما فوق
   bankInfo: string // معلومات الحساب البنكي للجمعية (اختياري)
   showBirthPlace: boolean // إظهار حقل مكان الميلاد
   showSpecialty: boolean // إظهار حقل التخصص/الفئة
